@@ -1,0 +1,59 @@
+
+import { Button, VerticalBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+	width: 600px;
+	height: 500px;
+	title: "Slint VirtualBox Copy/Paste";
+
+	// Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
+	in-out property <image> pasted-image;
+	callback request-copy();
+	callback request-paste();
+
+	VerticalBox {
+		alignment: center;
+
+		Text {
+			text: "Nyomj Ctrl+C vagy Ctrl+V gombot!";
+			horizontal-alignment: center;
+		}
+		Button {
+			text: "Kép Másolása";
+			clicked => { root.request-copy(); }
+		}
+
+		Rectangle {
+			background: #333;
+			border-radius: 5px;
+			clip: true;
+			min-height: 200px;
+			
+			Image {
+				source: root.pasted-image;
+				width: 100%;
+				height: 100%;
+				image-fit: contain; // Aránytartó átméretezés
+			}
+		}
+
+		Button {
+			text: "Kép Beillesztése";
+			clicked => { root.request-paste(); }
+		}
+
+	}
+
+	// Globális billentyűzet figyelés
+	forward-focus: my-key-handler;
+	my-key-handler := FocusScope {
+		key-pressed(event) => {
+			if (event.modifiers.control) {
+				if (event.text == "c") { root.request-copy(); return accept; }
+				if (event.text == "v") { root.request-paste(); return accept; }
+			}
+			reject
+		}
+	}
+}
+
