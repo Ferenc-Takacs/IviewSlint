@@ -1,59 +1,70 @@
 
-import { Button, VerticalBox } from "std-widgets.slint";
+import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
-	width: 600px;
-	height: 500px;
-	title: "Slint VirtualBox Copy/Paste";
+    width: 800px;
+    height: 600px;
+    title: "IviewSlint - Image viewer";
+    background: #1a1a1a;
 
-	// Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
-	in-out property <image> pasted-image;
-	callback request-copy();
-	callback request-paste();
+    // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
+    in-out property <image> pasted_image;
+    in-out property <image> current_image;
+    in-out property <float> zoom_level: 1.0;
+    
+    callback request_copy();
+    callback request_paste();
+    callback open_file();
+    callback save_tiff();
+    callback exit();
 
-	VerticalBox {
-		alignment: center;
+    VerticalBox {
+        padding: 0px;
+        spacing: 0px;
 
-		Text {
-			text: "Nyomj Ctrl+C vagy Ctrl+V gombot!";
-			horizontal-alignment: center;
-		}
-		Button {
-			text: "Kép Másolása";
-			clicked => { root.request-copy(); }
-		}
+        Rectangle {
+            height: 30px;
+            background: #2d2d2d;
+            HorizontalBox {
+                alignment: start;
+                padding: 5px;
+                spacing: 15px;
+                
+                // Egyszerű szöveges "menük", amikre kattintva Rust-ból Dialógust nyithatsz
+                Text { text: "Fájl"; color: white; touch_open := TouchArea { clicked => { root.open_file() } } }
+                Text { text: "Mentés"; color: white; touch_save := TouchArea { clicked => { root.save_tiff() } } }
+                Text { text: "Kilépés"; color: white; touch_exit := TouchArea { clicked => { root.exit() } } }
+            }
+        }
 
-		Rectangle {
-			background: #333;
-			border-radius: 5px;
-			clip: true;
-			min-height: 200px;
-			
-			Image {
-				source: root.pasted-image;
-				width: 100%;
-				height: 100%;
-				image-fit: contain; // Aránytartó átméretezés
-			}
-		}
+        Rectangle {
+            clip: true; // Ha a kép nagyobb, ne lógjon ki
+            
+            Flickable { // Ez teszi lehetővé a görgetést, ha a kép nagyobb mint az ablak
+                viewport-width: img.width * root.zoom_level;
+                viewport-height: img.height * root.zoom_level;
 
-		Button {
-			text: "Kép Beillesztése";
-			clicked => { root.request-paste(); }
-		}
+                img := Image {
+                    source: root.current-image;
+                    width: parent.viewport-width;
+                    height: parent.viewpor-height;
+                    image_fit: contain;
+                }
+            }
+        }
 
-	}
+    }
 
-	// Globális billentyűzet figyelés
-	forward-focus: my-key-handler;
-	my-key-handler := FocusScope {
-		key-pressed(event) => {
-			if (event.modifiers.control) {
-				if (event.text == "c") { root.request-copy(); return accept; }
-				if (event.text == "v") { root.request-paste(); return accept; }
-			}
-			reject
-		}
-	}
+    // Globális billentyűzet figyelés
+    forward_focus: my_key_handler;
+    my_key_handler := FocusScope {
+        key_pressed(event) => {
+            if (event.modifiers.control) {
+                if (event.text == "c") { root.request_copy(); return accept; }
+                if (event.text == "v") { root.request_paste(); return accept; }
+            }
+            reject
+        }
+    }
 }
 
