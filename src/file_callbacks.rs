@@ -1,11 +1,11 @@
 use crate::MainWindow; // A build.rs által generált típus
-//use slint::ComponentHandle;
+use slint::ComponentHandle;
 //use slint::SharedPixelBuffer;
 use slint::*;
 use arboard::*;
  
-pub fn file_callbacks(ui_handle: slint::Weak<MainWindow>) {
-    let ui = ui_handle.clone();
+pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>) {
+    let ui = ui_weak.unwrap();
     
     ui.on_request_copy(move || {
         println!("Másolás indul...");
@@ -16,40 +16,48 @@ pub fn file_callbacks(ui_handle: slint::Weak<MainWindow>) {
         let _ = clipboard.set_image(img);
     });
 
-    ui.on_request_paste(move || {
-        let ui = ui_handle.unwrap();
-        let mut clipboard = Clipboard::new().expect("Vágólap elérése sikertelen");
+    ui.on_request_paste({
+        let ui_weak = ui_weak.clone();
+        move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                let mut clipboard = Clipboard::new().expect("Vágólap elérése sikertelen");
+                if let Ok(image_data) = clipboard.get_image() {
+                    // Az arboard RGBA-t ad, a Slint SharedPixelBuffer-t vár
+                    let mut buffer = slint::SharedPixelBuffer::<Rgba8Pixel>::new(
+                        image_data.width as u32, 
+                        image_data.height as u32
+                    );
 
-        if let Ok(image_data) = clipboard.get_image() {
-            // Az arboard RGBA-t ad, a Slint SharedPixelBuffer-t vár
-            let mut buffer = slint::SharedPixelBuffer::<Rgba8Pixel>::new(
-                image_data.width as u32, 
-                image_data.height as u32
-            );
+                    // Pixelek átmásolása a bufferbe
+                    buffer.make_mut_bytes().copy_from_slice(&image_data.bytes);
 
-            // Pixelek átmásolása a bufferbe
-            buffer.make_mut_bytes().copy_from_slice(&image_data.bytes);
-
-            // 2. Slint Image létrehozása és küldése a GUI-nak
-            let slint_img = slint::Image::from_rgba8(buffer);
-            ui.set_pasted_image(slint_img);
-            
-            println!("Kép sikeresen beillesztve: {}x{}", image_data.width, image_data.height);
-        } else {
-            println!("Nincs kép a vágólapon!");
+                    // 2. Slint Image létrehozása és küldése a GUI-nak
+                    let slint_img = slint::Image::from_rgba8(buffer);
+                    ui.set_pasted_image(slint_img);
+                    
+                    println!("Kép sikeresen beillesztve: {}x{}", image_data.width, image_data.height);
+                } else {
+                    println!("Nincs kép a vágólapon!");
+                }
+            }
         }
     });
 
-    ui.on_save_tiff(move || {
-        // Kép lekérése a Slint property-ből
-        let slint_img = ui.get_pasted_image(); 
-        if let Some(pixel_buffer) = slint_img.as_rgba8() {
-            let width = pixel_buffer.width();
-            let height = pixel_buffer.height();
-            let pixels = pixel_buffer.make_mut_bytes(); // Nyers RGBA bájtok
-            
-            // Itt hívd meg a tiff mentő logikádat, amit az Iviewtest-ben írtál
-            save_as_tiff("output.tif", width, height, pixels).unwrap();
+    ui.on_save_tiff({
+        let ui_weak = ui_weak.clone();
+        move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                // Kép lekérése a Slint property-ből
+                let slint_img = ui.get_pasted_image(); 
+                if let Some(pixel_buffer) = slint_img.to_rgba8() {
+                    let width = pixel_buffer.width();
+                    let height = pixel_buffer.height();
+                    let pixels = pixel_buffer.make_mut_bytes(); // Nyers RGBA bájtok
+                    
+                    // Itt hívd meg a tiff mentő logikádat, amit az Iviewtest-ben írtál
+                    //save_as_tiff("output.tif", width, height, pixels).unwrap();
+                }
+            }
         }
     });
 

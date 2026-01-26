@@ -1,9 +1,5 @@
 slint::include_modules!();
 
-use slint::SharedPixelBuffer;
-use slint::Rgba8Pixel;
-use arboard::Clipboard;
-
 mod file_callbacks;
 
 fn main() -> Result<(), slint::PlatformError> {
