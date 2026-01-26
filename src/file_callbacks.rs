@@ -1,15 +1,18 @@
 use crate::MainWindow; // A build.rs által generált típus
-use slint::ComponentHandle;
-
+//use slint::ComponentHandle;
+//use slint::SharedPixelBuffer;
+use slint::*;
+use arboard::*;
+ 
 pub fn file_callbacks(ui_handle: slint::Weak<MainWindow>) {
     let ui = ui_handle.clone();
     
     ui.on_request_copy(move || {
         println!("Másolás indul...");
-        let mut clipboard = arboard::Clipboard::new().unwrap();
+        let mut clipboard = Clipboard::new().unwrap();
         // Itt jönne a te TIFF/Pixel adatod
         let dummy_pixels = vec![255u8; 100 * 100 * 4]; 
-        let img = arboard::ImageData { width: 100, height: 100, bytes: std::borrow::Cow::from(&dummy_pixels) };
+        let img = ImageData { width: 100, height: 100, bytes: std::borrow::Cow::from(&dummy_pixels) };
         let _ = clipboard.set_image(img);
     });
 
@@ -19,7 +22,7 @@ pub fn file_callbacks(ui_handle: slint::Weak<MainWindow>) {
 
         if let Ok(image_data) = clipboard.get_image() {
             // Az arboard RGBA-t ad, a Slint SharedPixelBuffer-t vár
-            let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(
+            let mut buffer = slint::SharedPixelBuffer::<Rgba8Pixel>::new(
                 image_data.width as u32, 
                 image_data.height as u32
             );
@@ -51,8 +54,8 @@ pub fn file_callbacks(ui_handle: slint::Weak<MainWindow>) {
     });
 
     // main.rs - Kép betöltésekor
-    let img_width = loaded_image.width();
-    let img_height = loaded_image.height();
+    let img_width = current_image.width();
+    let img_height = current_image.height();
 
     // Ablak fizikai méretének módosítása (ZOOM figyelembevételével)
     ui.window().set_size(slint::PhysicalSize::new(img_width, img_height + 30)); // +30 a menüsor

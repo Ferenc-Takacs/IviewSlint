@@ -41,14 +41,14 @@ export component MainWindow inherits Window {
             clip: true; // Ha a kép nagyobb, ne lógjon ki
             
             Flickable { // Ez teszi lehetővé a görgetést, ha a kép nagyobb mint az ablak
-                viewport-width: img.width * root.zoom_level;
-                viewport-height: img.height * root.zoom_level;
+                viewport-width: img.source.width * root.zoom_level * 1px;
+                viewport-height: img.source.height * root.zoom_level * 1px;
 
                 img := Image {
-                    source: root.current-image;
+                    source: root.current_image;
                     width: parent.viewport-width;
-                    height: parent.viewpor-height;
-                    image_fit: contain;
+                    height: parent.viewport-height;
+                    image-fit: contain;
                 }
             }
         }
