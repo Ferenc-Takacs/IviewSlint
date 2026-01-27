@@ -1,10 +1,10 @@
 use crate::MainWindow; // A build.rs által generált típus
-use crate::image_processing;
+use crate::image_processing::*;
+use crate::colors::*;
+//use crate::gpu_colors::*;
 
 use slint::ComponentHandle;
-use slint::*;
-use arboard::*;
-use rfd::FileDialog;
+//use slint::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::ImageViewer;
@@ -38,38 +38,42 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
             viewer.open_image_dialog(&None);
         }
     }
-    
+    let value = state_copy.clone();
     ui.on_copy_image(move || {
         println!("Copy");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = true;
         viewer.copy_to_clipboard();
     });
 
+    let value = state_copy.clone();
     ui.on_copy_view(move || {
         println!("Copy View");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = false;
         viewer.copy_to_clipboard();
     });
 
+    let value = state_copy.clone();
     ui.on_paste_image( move || {
         println!("Paste");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.copy_from_clipboard();
         // TODO show image
     });
 
+    let value = state_copy.clone();
     ui.on_save_file(move || {
         println!("Save");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = true;
         viewer.starting_save(&None);
     });
 
+    let value = state_copy.clone();
     ui.on_save_view( move || {
         println!("Save View");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = false;
         viewer.starting_save(&None);
     });
@@ -87,63 +91,74 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         ));
     }*/
 
+    let value = state_copy.clone();
     ui.on_open_file(move || {
         println!("Open");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.open_image_dialog(&None);
     });
     
+    let value = state_copy.clone();
     ui.on_change_image(move || {
         println!("Change");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = true;
         viewer.change_with_clipboard();
     });
     
+    let value = state_copy.clone();
     ui.on_change_view(move || {
         println!("Change View");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.save_original = false;
         viewer.change_with_clipboard();
     });
+    
+    let value = state_copy.clone();
     ui.on_reopen_file(move || {
         println!("Reopen");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.load_image(true);
     });
     
+    //let value = state_copy.clone();
     ui.on_recent_paths(move || {
         println!("Recent paths");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
         // TODO !!!! viewer.show_recent_window = !self.show_recent_window && !self.config.recent_files.is_empty();
     });
     
+    let value = state_copy.clone();
     ui.on_prev_image(move || {
         println!("Előző kép (Back)");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.navigation(-1);
     });
 
+    let value = state_copy.clone();
     ui.on_next_image(move || {
         println!("Következő kép (Next)");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.navigation(1);
     });
     
+    //let value = state_copy.clone();
     ui.on_info_clicked(move || {
         println!("Info");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
     });
 
+    let value = state_copy.clone();
     ui.on_change_background(move || {
         println!("on_change_background");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.bg_style = viewer.bg_style.clone().inc();
     });
 
+    let value = state_copy.clone();
     ui.on_down(move || {
         println!("on_down");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         // rotate  to 0
         let r = viewer.color_settings.rotate == Rotate::Rotate90
             || viewer.color_settings.rotate == Rotate::Rotate270;
@@ -151,82 +166,97 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         viewer.review(true, r);
     });
 
+    let value = state_copy.clone();
     ui.on_up(move || {
         println!("on_up");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         // rotate 180
         viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate180);
         viewer.review(true, false);
     });
 
+    let value = state_copy.clone();
     ui.on_left(move || {
         println!("on_left");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         // rotate -90
         viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate270);
         viewer.review(true, true);
     });
 
+    let value = state_copy.clone();
     ui.on_right(move || {
         println!("on_right");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         // rotate 90
         viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate90);
         viewer.review(true, true);
     });
 
+    let value = state_copy.clone();
     ui.on_plus(move || {
         println!("on_plus");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
+        viewer.change_magnify = 1.0;
+
     });
 
+    let value = state_copy.clone();
     ui.on_minus(move || {
         println!("on_minus");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
+        viewer.change_magnify = -1.0;
     });
 
+    let value = state_copy.clone();
     ui.on_red_channel(move || {
         println!("on_red_channel");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.color_settings.show_r = !viewer.color_settings.show_r;
         viewer.review(true, false);
     });
 
+    let value = state_copy.clone();
     ui.on_green_channel(move || {
         println!("on_green_channel");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.color_settings.show_g = !viewer.color_settings.show_g;
         viewer.review(true, false);
     });
 
+    let value = state_copy.clone();
     ui.on_blue_channel(move || {
         println!("on_blue_channel");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.color_settings.show_b = !viewer.color_settings.show_b;
         viewer.review(true, false);
     });
 
+    let value = state_copy.clone();
     ui.on_invert_channels(move || {
         println!("on_invert_channels");
-        let mut viewer = state_copy.borrow_mut();
+        let mut viewer = value.borrow_mut();
         viewer.color_settings.invert = !viewer.color_settings.invert;
         viewer.review(true, false);
     });
 
+    //let value = state_copy.clone();
     ui.on_color_setting(move || {
         println!("on_color_setting");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
         // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
     });
 
+    //let value = state_copy.clone();
     ui.on_about(move || {
         println!("on_about");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
     });
     
+    //let value = state_copy.clone();
     ui.on_exit(move || {
         println!("exit");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
         if let Some(ui) = ui_weak.upgrade() {
             let _ = ui.window().hide();
         }
@@ -234,9 +264,10 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
     
     // Példa Timer indítására a Play gombra
     let timer = slint::Timer::default();
+    //let value = state_copy.clone();
     ui.on_play_animation(move || {
         println!("Play/Stop");
-        let mut viewer = state_copy.borrow_mut();
+        //let mut viewer = value.borrow_mut();
         timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
             // Következő képkocka betöltése...
         });

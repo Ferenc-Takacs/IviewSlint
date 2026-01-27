@@ -82,7 +82,7 @@ pub fn get_settings_path() -> PathBuf {
     PathBuf::from("settings.json")
 }
 
-pub fn load_icon() -> egui::IconData {
+/*pub fn load_icon() -> egui::IconData {
     // Beágyazzuk a képet a binárisba, hogy ne kelljen külön fájl mellé
     let image_data = include_bytes!("assets/magnifier.png");
     let image = image::load_from_memory(image_data)
@@ -96,7 +96,7 @@ pub fn load_icon() -> egui::IconData {
         width,
         height,
     }
-}
+}*/
 
 impl ImageViewer {
 
@@ -133,12 +133,13 @@ impl ImageViewer {
 
                 // Konvertálás egui textúrává
                 let rgba = frame.into_buffer();
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(
-                    [rgba.width() as usize, rgba.height() as usize],
-                    &rgba.into_raw(),
-                );
-                let img = color_image_to_dynamic(color_image);
-                images.push(img);
+                // TODO !!!!!
+                //let color_image = egui::ColorImage::from_rgba_unmultiplied(
+                //    [rgba.width() as usize, rgba.height() as usize],
+                //    &rgba.into_raw(),
+                //);
+                //let img = color_image_to_dynamic(color_image);
+                //images.push(img);
 
             }
 
@@ -349,9 +350,9 @@ impl ImageViewer {
     }
 
     pub fn starting_save(&mut self, def: &Option<PathBuf>) {
-        if self.texture.is_none() {
-            return;
-        }
+        //if self.texture.is_none() {
+        //    return;
+        //} TODO !!!!
 
         let mut save_name = self.image_full_path.clone();
 
@@ -474,7 +475,7 @@ impl ImageViewer {
                                     if let Some(res) = resolution.clone() {
                                         let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                         exif.patch_thumbnail(&thumbnail);
-                                        exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
+                                        exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
                                     }
                                 }
                                 let exif_segment = img_parts::jpeg::JpegSegment::new_with_contents(
@@ -503,7 +504,7 @@ impl ImageViewer {
                                 if let Some(res) = resolution.clone() {
                                     let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                     exif.patch_thumbnail(&thumbnail);
-                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
+                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
                                 }
                             }
                             webp.set_exif(Some(img_parts::Bytes::from(exif.raw_exif)));
@@ -595,7 +596,7 @@ impl ImageViewer {
                                 if let Some(res) = resolution.clone() {
                                     let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                     exif.patch_thumbnail(&thumbnail);
-                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
+                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
                                 }
                             }
                             let original_pixel_offset = u32::from_le_bytes(bmp_data[10..14].try_into().unwrap()) as usize;

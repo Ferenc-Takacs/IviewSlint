@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::env;
 use crate::ImageViewer;
 use crate::colors::*;
-
-
+use slint::Color;
+//use image::math::Rect;
 
 // Segédfüggvény a vágólapon lévő kép kimentéséhez egy ideiglenes fájlba
 pub fn save_clipboard_image() -> Option<PathBuf> {
@@ -26,38 +26,6 @@ pub fn save_clipboard_image() -> Option<PathBuf> {
     None
 }
 
-
-/*pub fn get_exif(path: &Path) -> Option<exif::Exif> {
-    if let Ok(file) = std::fs::File::open(path) {
-        let mut reader = std::io::BufReader::new(file);
-        return Some(exif::Reader::new().read_from_container(&mut reader).ok()?);
-    }
-    None
-}*/
-
-/*pub fn get_jpeg_raw_exif(path: &Path) -> Option<Vec<u8>> {
-    let file = std::fs::File::open(path).ok()?;
-    let mut reader = std::io::BufReader::new(file);
-    if let Ok(jpeg) = img_parts::jpeg::Jpeg::from_reader(&mut reader) {
-        return jpeg.segments().iter()
-            .find(|s| s.marker() == 0xE1) // 0xE1 az EXIF marker
-            .map(|s| s.contents().to_vec());
-    }
-    None
-}*/
-
-/*pub fn exif_to_decimal(field: &exif::Field) -> Option<f64> {
-    if let exif::Value::Rational(ref fractions) = field.value {
-        if fractions.len() >= 3 {
-            // fok + (perc / 60) + (másodperc / 3600)
-            let deg = fractions[0].num as f64 / fractions[0].denom as f64;
-            let min = fractions[1].num as f64 / fractions[1].denom as f64;
-            let sec = fractions[2].num as f64 / fractions[2].denom as f64;
-            return Some(deg + min / 60.0 + sec / 3600.0);
-        }
-    }
-    None
-}*/
 
 #[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub enum BackgroundStyle {
@@ -99,7 +67,7 @@ pub struct AnimatedImage {
     pub total_frames: usize,
 }
 
-pub fn color_image_to_dynamic(color_image: egui::ColorImage) -> image::DynamicImage {
+/*pub fn color_image_to_dynamic(color_image: ColorImage) -> image::DynamicImage {
     let size = color_image.size;
     // Flatten Color32 (RGBA) pixels into a Vec<u8>
     let pixels = color_image.pixels.iter()
@@ -112,42 +80,41 @@ pub fn color_image_to_dynamic(color_image: egui::ColorImage) -> image::DynamicIm
 
     // Wrap in DynamicImage
     image::DynamicImage::ImageRgba8(buffer)
-}
+}*/
 
-pub fn draw_custom_background(ui: &mut egui::Ui, bg_style: &BackgroundStyle) {
-    let rect = ui.max_rect(); // A terület, ahová a kép kerülne
+pub fn draw_custom_background(bg_style: &BackgroundStyle) {
+    /*let rect = Rect::new(); // TODO !!!! ui.max_rect(); // A terület, ahová a kép kerülne
     if rect.width() <= 0.0 {
-        ui.ctx().request_repaint();
         return;
     }
     let paint = ui.painter();
     let (col1, col2) = if *bg_style == BackgroundStyle::DarkBright {
-        (egui::Color32::from_gray(35), egui::Color32::from_gray(70))
+        (Color::from_rgb_u8(35,35,35), Color::from_rgb_u8(70,70,70))
     } else if *bg_style == BackgroundStyle::GreenMagenta {
         (
-            egui::Color32::from_rgb(40, 180, 40),
-            egui::Color32::from_rgb(180, 50, 180),
+            Color::from_rgb_u8(40, 180, 40),
+            Color::from_rgb_u8(180, 50, 180),
         )
     } else if *bg_style == BackgroundStyle::BlackBrown {
         (
-            egui::Color32::from_rgb(0, 0, 0),
-            egui::Color32::from_rgb(200, 50, 10),
+            Color::from_rgb_u8(0, 0, 0),
+            Color::from_rgb_u8(200, 50, 10),
         )
     } else {
-        (egui::Color32::BLACK, egui::Color32::WHITE)
+        (Color::from_rgb_u8(0,0,0), Color::from_rgb_u8(255,255,255))
     };
     match *bg_style {
         BackgroundStyle::Black => {
-            paint.rect_filled(rect, 0.0, egui::Color32::BLACK);
+            paint.rect_filled(rect, Color::from_rgb_u8(0,0,0));
         }
         BackgroundStyle::White => {
-            paint.rect_filled(rect, 0.0, egui::Color32::WHITE);
+            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(255,255,255));
         }
         BackgroundStyle::Gray => {
-            paint.rect_filled(rect, 0.0, egui::Color32::from_gray(128));
+            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(128,128,128));
         }
         BackgroundStyle::Green => {
-            paint.rect_filled(rect, 0.0, egui::Color32::from_rgb(50, 200, 50));
+            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(50, 200, 50));
         }
         _ => {
             paint.rect_filled(rect, 0.0, col1);
@@ -158,12 +125,12 @@ pub fn draw_custom_background(ui: &mut egui::Ui, bg_style: &BackgroundStyle) {
             for y in 0..=num_y {
                 for x in 0..=num_x {
                     if (x + y) % 2 == 0 {
-                        let tile_rect = egui::Rect::from_min_size(
-                            egui::pos2(
+                        let tile_rect = Rect::from_min_size(
+                            pos2(
                                 rect.left() + x as f32 * tile_size,
                                 rect.top() + y as f32 * tile_size,
                             ),
-                            egui::vec2(tile_size, tile_size),
+                            vec2(tile_size, tile_size),
                         );
                         let visible_tile = tile_rect.intersect(rect);
                         if visible_tile.width() > 0.0 && visible_tile.height() > 0.0 {
@@ -173,18 +140,18 @@ pub fn draw_custom_background(ui: &mut egui::Ui, bg_style: &BackgroundStyle) {
                 }
             }
         }
-    }
+    }*/
 }
 
 impl ImageViewer {
 
-    pub fn review(&mut self, ctx: &egui::Context, coloring: bool, new_rotate: bool) {
+    pub fn review(&mut self, coloring: bool, new_rotate: bool) {
         if let Some(mut img) = self.original_image.clone() {
-            self.review_core(ctx, &mut img, coloring, new_rotate)
+            self.review_core(&mut img, coloring, new_rotate)
         }
     }
     
-    fn review_core(&mut self, ctx: &egui::Context, img: & mut image::DynamicImage, coloring: bool, new_rotate: bool) {
+    fn review_core(&mut self, img: & mut image::DynamicImage, coloring: bool, new_rotate: bool) {
         let default_settings = ColorSettings::default();
         if coloring {
             if let Some(_interface) = &self.gpu_interface {
@@ -198,7 +165,7 @@ impl ImageViewer {
             self.color_settings = default_settings.clone();
         }
 
-        let max_gpu_size = ctx.input(|i| i.max_texture_side) as u32;
+        let max_gpu_size = 4096;// TODO !!! ctx.input(|i| i.max_texture_side) as u32;
         let w_orig = img.width();
         if img.width() > max_gpu_size || img.height() > max_gpu_size {
             *img = img.resize(
@@ -220,17 +187,17 @@ impl ImageViewer {
         }
 
         let mut rgba_image = img.to_rgba8();
-        self.image_size.x = rgba_image.dimensions().0 as f32;
-        self.image_size.y = rgba_image.dimensions().1 as f32;
+        self.image_size.0 = rgba_image.dimensions().0 as f32;
+        self.image_size.1 = rgba_image.dimensions().1 as f32;
         
         if let Some(interface) = &self.gpu_interface {
             interface.change_colorcorrection(
                 if self.show_original_only { &default_settings } else { &self.color_settings },
-                self.image_size.x,
-                self.image_size.y);
+                self.image_size.0,
+                self.image_size.1);
         }
 
-        self.resize = self.image_size.x / w_orig as f32;
+        self.resize = self.image_size.0 / w_orig as f32;
         
         if self.color_settings.is_setted() || self.color_settings.is_blured() {
             if self.gpu_interface.is_some() {
@@ -243,25 +210,25 @@ impl ImageViewer {
 
         self.rgba_image = Some(rgba_image.clone());
         let pixel_data = rgba_image.into_raw();
-        let color_image = egui::ColorImage::from_rgba_unmultiplied(
-            [self.image_size.x as usize, self.image_size.y as usize],
-            &pixel_data,
-        );
-        
-        self.texture = Some(ctx.load_texture("kep", color_image, Default::default()));
+        //let color_image = egui::ColorImage::from_rgba_unmultiplied(
+        //    [self.image_size.0 as usize, self.image_size.1 as usize],
+        //    &pixel_data,
+        //);
+        // TODO !!!!
+        //self.texture = Some(ctx.load_texture("kep", color_image, Default::default()));
     }
 
-    pub fn pick_color(&self, pixel_x : u32,pixel_y: u32) -> Option<egui::Color32> {
+    pub fn pick_color(&self, pixel_x : u32,pixel_y: u32) -> Option<Color> {
         if let Some(rgba_image) = &self.rgba_image {
             if pixel_x < rgba_image.width() && pixel_y < rgba_image.height() {
                 let pixel = rgba_image.get_pixel(pixel_x, pixel_y);
-                return Some(egui::Color32::from_rgb(pixel[0], pixel[1], pixel[2]));
+                return Some(Color::from_rgb_u8(pixel[0], pixel[1], pixel[2]));
             }
         }
         None
     }
 
-    pub fn navigation(&mut self, ctx: &egui::Context, irany: i32) {
+    pub fn navigation(&mut self, irany: i32) {
         if self.list_of_images.is_empty() {
             return;
         }
@@ -271,7 +238,7 @@ impl ImageViewer {
             (self.actual_index + self.list_of_images.len() - 1) % self.list_of_images.len()
         };
         self.actual_index = uj_index;
-        self.open_image(ctx, &self.list_of_images[uj_index].path(), false);
+        self.open_image(&self.list_of_images[uj_index].path(), false);
     }
 
 }

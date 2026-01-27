@@ -1,6 +1,6 @@
 use crate::colors::ColorSettings;
 //use wgpu::util::DeviceExt;
-use std::sync::Arc;
+//use std::sync::Arc;
 
 // Ez kényszeríti a Rustot, hogy figyelje a shader fájlt
 const _: &str = include_str!("shaders.wgsl");
@@ -34,7 +34,7 @@ pub struct GpuFilterSettings {
 
 #[repr(C)]
 pub struct GpuInterface {
-    pub device: Arc<wgpu::Device>,
+    /*pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
     pipe_gen_lut: wgpu::ComputePipeline,
     pipe_apply: wgpu::ComputePipeline,
@@ -45,7 +45,7 @@ pub struct GpuInterface {
     sampler: wgpu::Sampler,
     bind_group_gen: wgpu::BindGroup,
     bind_group_apply_0: wgpu::BindGroup,
-    bg_layout_apply: wgpu::BindGroupLayout,
+    bg_layout_apply: wgpu::BindGroupLayout,*/
     colset: ColorSettings,
 }
 

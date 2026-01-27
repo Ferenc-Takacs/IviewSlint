@@ -11,13 +11,13 @@ use crate::image_processing::*;
 use crate::file_handlers::*;
 use crate::exif_my::*;
 use std::fs;
-
+use std::path::PathBuf;
 //use slint::ModelHandle;
 use std::rc::Rc;
 use std::cell::RefCell;
 
 fn main() -> Result<(), slint::PlatformError> {
-    let icon = load_icon();
+    //let icon = load_icon();
     let ui = MainWindow::new()?;
     let state = Rc::new(RefCell::new(ImageViewer::default()));
     file_callbacks::file_callbacks(ui.as_weak(), state);
@@ -51,18 +51,25 @@ pub struct ImageViewer {
     pub save_dialog: Option<SaveSettings>,
     pub color_settings: ColorSettings,
     pub lut: Option<Lut4ColorSettings>,
+    pub gpu_interface : Option<gpu_colors::GpuInterface>,
+    pub gpu_tried_init: bool,
+    pub use_gpu: bool,
     pub refit_reopen: bool,
     pub fit_open: bool,
+    pub same_correction_open: bool,
     pub bg_style: BackgroundStyle,
     pub config: AppSettings,
     pub resolution: Option<Resolution>,
     // Animáció kezelés (Slint-ben a Timer fogja hajtani)
+    pub recent_file_modified: bool,
     pub is_animated: bool,
     pub anim_playing: bool,
     pub anim_loop: bool,
     pub current_frame: usize,
     pub last_frame_time: std::time::Instant,
     pub anim_data: Option<AnimatedImage>,
+    pub change_magnify: f32,
+    pub show_original_only: bool,
     pub modified: bool,
     // A többi meződet (settings, gpu, stb.) fokozatosan tölthetjük be
 }
@@ -84,7 +91,7 @@ impl Default for ImageViewer {
             current_slint_image: None,
             original_image: None,
             rgba_image: None,
-            image_size: (0.0, 0.0),
+            image_size: (800.0, 600.0),
             center: true,
             show_info: false,
             aktualis_offset: (0.0, 0.0),
@@ -93,17 +100,24 @@ impl Default for ImageViewer {
             save_dialog: None,
             color_settings: ColorSettings::default(),
             lut: None,
+            gpu_interface : None,
+            gpu_tried_init: false,
+            use_gpu: true,
             refit_reopen: false,
             fit_open: true,
+            same_correction_open: false,
             bg_style: BackgroundStyle::DarkBright,
             config: AppSettings::default(),
             resolution: None,
+            recent_file_modified: false,
             is_animated: false,
             anim_playing: false,
             anim_loop: true,
             current_frame: 0,
             last_frame_time: std::time::Instant::now(),
             anim_data: None,
+            change_magnify: 0.0,
+            show_original_only: false,
             modified: false,
         }
     }
