@@ -1,106 +1,76 @@
 use crate::MainWindow; // A build.rs által generált típus
 use slint::ComponentHandle;
-//use slint::SharedPixelBuffer;
 use slint::*;
 use arboard::*;
 use rfd::FileDialog;
+use std::rc::Rc;
+use std::cell::RefCell;
+use crate::ImageViewer;
 
-
-pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>) {
-    let ui = ui_weak.unwrap();
+pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageViewer>>) {
+    let ui = ui_weak.unwrap();    
+    let state_copy = state.clone();
+    
+    { // startup setting
+        let args: Vec<String> = env::args().collect();
+        let (start_image, clipboard) = if args.len() > 1 {
+            // Ha van argumentum, azt útvonalként kezeljük
+            (Some(PathBuf::from(&args[1])), false)
+        } else {
+            // 2. Ha nincs, megnézzük a vágólapot (Ctrl+C-vel másolt kép)
+            (save_clipboard_image(), true)
+        };
+        
+        let mut viewer = state_copy.borrow_mut();
+        viewer.load_settings();
+        
+        if let Some(path) = start_image {
+            if clipboard {
+                // az előző könyvtárt vesszük
+                viewer.make_image_list()
+            }
+            viewer.open_image(&cc.egui_ctx, &path, !clipboard);
+        } else {
+            viewer.open_image_dialog(&cc.egui_ctx, &None);
+        }
+    }
     
     ui.on_copy_image(move || {
         println!("Copy");
-        let mut clipboard = Clipboard::new().unwrap();
-        // Itt jönne a te TIFF/Pixel adatod
-        let dummy_pixels = vec![255u8; 100 * 100 * 4]; 
-        let img = ImageData { width: 100, height: 100, bytes: std::borrow::Cow::from(&dummy_pixels) };
-        let _ = clipboard.set_image(img);
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = true;
+        viewer.copy_to_clipboard();
     });
 
     ui.on_copy_view(move || {
         println!("Copy View");
-        let mut clipboard = Clipboard::new().unwrap();
-        // Itt jönne a te TIFF/Pixel adatod
-        let dummy_pixels = vec![255u8; 100 * 100 * 4]; 
-        let img = ImageData { width: 100, height: 100, bytes: std::borrow::Cow::from(&dummy_pixels) };
-        let _ = clipboard.set_image(img);
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = false;
+        viewer.copy_to_clipboard();
     });
 
-    ui.on_paste_image({
-        let ui_weak = ui_weak.clone();
-        move || {
-            println!("Paste");
-            if let Some(ui) = ui_weak.upgrade() {
-                let mut clipboard = Clipboard::new().expect("Vágólap elérése sikertelen");
-                if let Ok(image) = clipboard.get_image() {
-                    // Az arboard RGBA-t ad, a Slint SharedPixelBuffer-t vár
-                    let mut buffer = slint::SharedPixelBuffer::<Rgba8Pixel>::new(
-                        image.width as u32, image.height as u32
-                    );
-                    buffer.make_mut_bytes().copy_from_slice(&image.bytes);
-                    let slint_img = slint::Image::from_rgba8(buffer);
-                    ui.set_current_image(slint_img);
-                    // Ablak átméretezése a képhez
-                    ui.window().set_size(slint::PhysicalSize::new(
-                        image.width as u32, 
-                        (image.height as u32) + 30
-                    ));
-    
-                    // Pixelek átmásolása a bufferbe
-                    /*buffer.make_mut_bytes().copy_from_slice(&image_data.bytes);
-
-                    // 2. Slint Image létrehozása és küldése a GUI-nak
-                    let slint_img = slint::Image::from_rgba8(buffer);
-                    ui.set_pasted_image(slint_img);
-                    
-                    println!("Kép sikeresen beillesztve: {}x{}", image_data.width, image_data.height);*/
-                } else {
-                    println!("Nincs kép a vágólapon!");
-                }
-            }
-        }
+    ui.on_paste_image( move || {
+        println!("Paste");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.copy_from_clipboard();
+        // TODO show image
     });
 
-    ui.on_save_file({
-        let ui_weak = ui_weak.clone();
-        move || {
-            println!("Save");
-            if let Some(ui) = ui_weak.upgrade() {
-                // Kép lekérése a Slint property-ből
-                let slint_img = ui.get_pasted_image(); 
-                if let Some(mut pixel_buffer) = slint_img.to_rgba8() {
-                    let width = pixel_buffer.width();
-                    let height = pixel_buffer.height();
-                    let pixels = pixel_buffer.make_mut_bytes(); // Nyers RGBA bájtok
-                    
-                    // Itt hívd meg a tiff mentő logikádat, amit az Iviewtest-ben írtál
-                    //save_as_tiff("output.tif", width, height, pixels).unwrap();
-                }
-            }
-        }
+    ui.on_save_file(move || {
+        println!("Save");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = true;
+        viewer.starting_save(&None);
     });
 
-    ui.on_save_view({
-        let ui_weak = ui_weak.clone();
-        move || {
-            println!("Save View");
-            if let Some(ui) = ui_weak.upgrade() {
-                // Kép lekérése a Slint property-ből
-                let slint_img = ui.get_pasted_image(); 
-                if let Some(mut pixel_buffer) = slint_img.to_rgba8() {
-                    let width = pixel_buffer.width();
-                    let height = pixel_buffer.height();
-                    let pixels = pixel_buffer.make_mut_bytes(); // Nyers RGBA bájtok
-                    
-                    // Itt hívd meg a tiff mentő logikádat, amit az Iviewtest-ben írtál
-                    //save_as_tiff("output.tif", width, height, pixels).unwrap();
-                }
-            }
-        }
+    ui.on_save_view( move || {
+        println!("Save View");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = false;
+        viewer.starting_save(&None);
     });
 
-    let slint_img = ui.get_current_image(); // Ez kéri le a képet a GUI-ból
+    /*let slint_img = ui.get_current_image(); // Ez kéri le a képet a GUI-ból
 
     if let Some(pixel_buffer) = slint_img.to_rgba8() {
         let img_width = pixel_buffer.width();
@@ -111,49 +81,148 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>) {
             img_width, 
             img_height + 30 // +30 pixel a menüsornak
         ));
-    }
+    }*/
 
     ui.on_open_file(move || {
         println!("Open");
-        let files = rfd::FileDialog::new()
-            .add_filter("Image Files", &["png", "jpg", "tiff", "tif"])
-            .pick_file();
-
-        if let Some(path) = files {
-            // Kép betöltése elérési útról és megjelenítése...
-            println!("Kiválasztott fájl: {:?}", path);
-        }
+        let mut viewer = state_copy.borrow_mut();
+        viewer.open_image_dialog(&None);
     });
     
     ui.on_change_image(move || {
         println!("Change");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = true;
+        viewer.change_with_clipboard();
     });
     
     ui.on_change_view(move || {
         println!("Change View");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.save_original = false;
+        viewer.change_with_clipboard();
     });
     ui.on_reopen_file(move || {
         println!("Reopen");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.load_image(true);
     });
     
     ui.on_recent_paths(move || {
         println!("Recent paths");
+        let mut viewer = state_copy.borrow_mut();
+        // TODO !!!! viewer.show_recent_window = !self.show_recent_window && !self.config.recent_files.is_empty();
     });
     
     ui.on_prev_image(move || {
         println!("Előző kép (Back)");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.navigation(-1);
     });
 
     ui.on_next_image(move || {
         println!("Következő kép (Next)");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.navigation(1);
     });
     
+    ui.on_info_clicked(move || {
+        println!("Info");
+        let mut viewer = state_copy.borrow_mut();
+    });
+
+    ui.on_background(move || {
+        println!("background");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.bg_style = viewer.bg_style.clone().inc();
+    });
+
+    ui.on_down(move || {
+        println!("on_down");
+        let mut viewer = state_copy.borrow_mut();
+        // rotate  to 0
+        let r = viewer.color_settings.rotate == Rotate::Rotate90
+            || viewer.color_settings.rotate == Rotate::Rotate270;
+        viewer.color_settings.rotate = Rotate::Rotate0;
+        viewer.review(true, r);
+    });
+
+    ui.on_up(move || {
+        println!("on_up");
+        let mut viewer = state_copy.borrow_mut();
+        // rotate 180
+        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate180);
+        viewer.review(true, false);
+    });
+
+    ui.on_left(move || {
+        println!("on_left");
+        let mut viewer = state_copy.borrow_mut();
+        // rotate -90
+        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate270);
+        viewer.review(true, true);
+    });
+
+    ui.on_right(move || {
+        println!("on_right");
+        let mut viewer = state_copy.borrow_mut();
+        // rotate 90
+        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate90);
+        viewer.review(true, true);
+    });
+
+    ui.on_plus(move || {
+        println!("on_plus");
+        let mut viewer = state_copy.borrow_mut();
+    });
+
+    ui.on_minus(move || {
+        println!("on_minus");
+        let mut viewer = state_copy.borrow_mut();
+    });
+
+    ui.on_red_channel(move || {
+        println!("on_red_channel");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.color_settings.show_r = !viewer.color_settings.show_r;
+        viewer.review(true, false);
+    });
+
+    ui.on_green_channel(move || {
+        println!("on_green_channel");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.color_settings.show_g = !viewer.color_settings.show_g;
+        viewer.review(true, false);
+    });
+
+    ui.on_blue_channel(move || {
+        println!("on_blue_channel");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.color_settings.show_b = !viewer.color_settings.show_b;
+        viewer.review(true, false);
+    });
+
+    ui.on_invert_channels(move || {
+        println!("on_invert_channels");
+        let mut viewer = state_copy.borrow_mut();
+        viewer.color_settings.invert = !viewer.color_settings.invert;
+        viewer.review(true, false);
+    });
+
+    ui.on_color_setting(move || {
+        println!("on_color_setting");
+        let mut viewer = state_copy.borrow_mut();
+        // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
+    });
+
     ui.on_about(move || {
-        println!("About");
+        println!("on_about");
+        let mut viewer = state_copy.borrow_mut();
     });
     
     ui.on_exit(move || {
         println!("exit");
+        let mut viewer = state_copy.borrow_mut();
         if let Some(ui) = ui_weak.upgrade() {
             let _ = ui.window().hide();
         }
@@ -163,13 +232,11 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>) {
     let timer = slint::Timer::default();
     ui.on_play_animation(move || {
         println!("Play/Stop");
+        let mut viewer = state_copy.borrow_mut();
         timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
             // Következő képkocka betöltése...
         });
     });
     
-    ui.on_info_clicked(move || {
-        println!("Info");
-    });
 }
 

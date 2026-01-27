@@ -3,8 +3,8 @@ import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 
 component MenuItem inherits Rectangle {
     in property <string> text;
-    in property <bool> is_top_level: false; // Különbség a felső és belső menü között
-    callback clicked <=> ta.clicked;
+    in property <bool> is_top_level: false;
+    callback click();
     callback moved(PointerEvent);
     width: layout.preferred-width + 20px; 
     height: is_top_level ? 30px : 25px;
@@ -12,6 +12,7 @@ component MenuItem inherits Rectangle {
     border_radius: 3px;
     ta := TouchArea {
         mouse_cursor: pointer;
+        clicked => { root.click(); }
         pointer_event(event) => { root.moved(event); }
     }    
     layout := HorizontalLayout {
@@ -22,7 +23,7 @@ component MenuItem inherits Rectangle {
             color: white;
             horizontal_alignment: center;
             vertical_alignment: center;
-            font_size: 14px;
+            font_size: 12px;
         }
     }
 }
@@ -37,7 +38,7 @@ export component MainWindow inherits Window {
     VerticalBox {
         padding: 0px;
         spacing: 0px;
-
+        
         Rectangle {
             height: 30px;
             background: #252525;
@@ -47,19 +48,20 @@ export component MainWindow inherits Window {
                 padding_top: 0px; padding_bottom: 0px;
                 spacing: 5px;
                 alignment: start;
-                
+
                 file_btn := MenuItem {
                     text: "File";
                     is_top_level: true;
-                    clicked => {
-                        root.title = "File Katt!"; 
-                        root.do_show_file_menu(
-                            self.absolute-position.x,
-                            self.absolute-position.y + self.height);
+                    click => {
+                        root.title = "File Katt!";
+                        root.file_menu_visible = !root.file_menu_visible;
+                        root.options_menu_visible = false;
+                        root.menu_active = root.file_menu_visible;
                     }
                     moved(event) => {
-                        if (event.kind == PointerEventKind.move && root.menu_active && !file_menu.visible) {
-                            root.do_show_file_menu(self.absolute-position.x, self.absolute-position.y + self.height);
+                        if (event.kind == PointerEventKind.move && root.menu_active) {
+                            root.file_menu_visible = true;
+                            root.options_menu_visible = false;
                         }
                     }
                 }
@@ -67,15 +69,16 @@ export component MainWindow inherits Window {
                 opt_btn := MenuItem {
                     text: "Options";
                     is_top_level: true;
-                    clicked => {
+                    click => {
                         root.title = "Option Katt!"; 
-                        root.do_show_options_menu(
-                            self.absolute-position.x,
-                            self.absolute-position.y + self.height);
+                        root.options_menu_visible = !root.options_menu_visible;
+                        root.file_menu_visible = false;
+                        root.menu_active = root.options_menu_visible;
                     }
                     moved(event) => {
-                        if (event.kind == PointerEventKind.move && root.menu_active && !options_menu.visible) {
-                            root.do_show_options_menu(self.absolute-position.x, self.absolute-position.y + self.height);
+                        if (event.kind == PointerEventKind.move && root.menu_active) {
+                            root.options_menu_visible = true;
+                            root.file_menu_visible = false;
                         }
                     }
                 }
@@ -84,14 +87,14 @@ export component MainWindow inherits Window {
                 Rectangle { width: 2px; background: #444; height: 20px; }
                 
                 // Léptető Gombok
-                MenuItem { text: "<< B"; is_top_level: true; clicked => {
+                MenuItem { text: "<< B"; is_top_level: true; click => {
                     root.title = "<< Katt!";  close_menu(); root.prev_image() } width: 60px; }
 
-                MenuItem { text: ">> N"; is_top_level: true; clicked => {
-                    root.title = ">> Katt!"; close_menu();  root.next_image() } width: 60px; }
+                MenuItem { text: ">> N"; is_top_level: true; click => {
+                    root.title = ">> Katt!"; close_menu(); root.next_image() } width: 60px; }
 
                 // Animáció vezérlő
-                MenuItem { text: "▶ Play"; is_top_level: true; clicked => {
+                MenuItem { text: "▶ Play"; is_top_level: true; click => {
                     root.title = "Play Katt!"; close_menu(); root.play_animation() }  width: 80px; }
             }
         }
@@ -99,7 +102,6 @@ export component MainWindow inherits Window {
         Rectangle {
             clip: true; // Ha a kép nagyobb, ne lógjon ki
             background: #121212;
-            TouchArea {clicked => { close_menu(); } }
 
             Flickable {
                 viewport-width: img.source.width * root.zoom_level * 1px;
@@ -112,82 +114,68 @@ export component MainWindow inherits Window {
                     image-fit: contain;
                 }
             }
+            
+            if (root.menu_active) : TouchArea {clicked => { close_menu(); } }
         }
 
     }
 
-    file_menu := PopupWindow {
-        x: root.file_menu_px; 
-        y: root.file_menu_py;
-        width: 180px;
-        
+    if (root.file_menu_visible) :
         Rectangle {
+            x: file_btn.absolute-position.x;
+            y: 30px; // A menüsor magassága
+            width: 180px;
+            height: file_col.preferred-height;
             background: #2d2d2d;
-            border_width: 1px;
-            border_color: #444;
-            VerticalBox {
+            border-width: 1px; border-color: #444;
+            
+            file_col := VerticalBox {
                 padding: 4px; spacing: 2px;
-                MenuItem { text: "Open ... (O)"; clicked => { root.close_menu(); root.open_file(); } }
-                MenuItem { text: "Reopen (R)"; clicked => { root.close_menu(); root.reopen_file(); } }
-                MenuItem { text: "Save ... (S)"; clicked => { root.close_menu(); root.save_file(); } }
-                MenuItem { text: "Save View ... (Shift+S)"; clicked => { root.close_menu(); root.save_file(); } }
-                MenuItem { text: "Recent Paths (P)"; clicked => { root.close_menu(); root.recent_paths(); } }
+                MenuItem { text: "Open ... (O)"; click => { close_menu(); root.open_file(); } }
+                MenuItem { text: "Reopen (R)"; click => { close_menu(); root.reopen_file(); } }
+                MenuItem { text: "Save ... (S)"; click => { close_menu(); root.save_file(); } }
+                MenuItem { text: "Save View ... (Shift+S)"; click => { close_menu(); root.save_file(); } }
+                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); root.recent_paths(); } }
                 Rectangle { height: 1px; background: #444; } // Elválasztó vonal
-                MenuItem { text: "Copy (Ctrl+C)"; clicked => { root.close_menu(); root.copy_image(); } }
-                MenuItem { text: "Copy View (Ctrl+Shift+C)"; clicked => { root.close_menu(); root.copy_view(); } }
-                MenuItem { text: "Past (Ctrl+V)"; clicked => { root.close_menu(); root.paste_image(); } }
-                MenuItem { text: "Change (Ctrl+X)"; clicked => { root.close_menu(); root.change_image(); } }
-                MenuItem { text: "Change View (Ctrl+Shift+X)"; clicked => { root.close_menu(); root.change_view(); } }
+                MenuItem { text: "Copy (Ctrl+C)"; click => { close_menu(); root.copy_image(); } }
+                MenuItem { text: "Copy View (Ctrl+Shift+C)"; click => { close_menu(); root.copy_view(); } }
+                MenuItem { text: "Past (Ctrl+V)"; click => { close_menu(); root.paste_image(); } }
+                MenuItem { text: "Change (Ctrl+X)"; click => { close_menu(); root.change_image(); } }
+                MenuItem { text: "Change View (Ctrl+Shift+X)"; click => { close_menu(); root.change_view(); } }
                 Rectangle { height: 1px; background: #444; } // Elválasztó vonal
-                MenuItem { text: "About (A)"; clicked => { root.close_menu(); root.about(); } }
-                MenuItem { text: "Exit"; clicked => { root.close_menu(); root.exit(); } }
+                MenuItem { text: "About (A)"; click => { close_menu(); root.about(); } }
+                MenuItem { text: "Exit"; click => { close_menu(); root.exit(); } }
             }
         }
-    }
 
-    options_menu := PopupWindow {
-        x: root.options_menu_px;
-        y: root.options_menu_py;
-        width: 150px;
-        
+    if (root.options_menu_visible) :
         Rectangle {
-            background: #2d2d2d; border_width: 1px; border_color: #444;
-            VerticalBox {
+            x: opt_btn.absolute-position.x;
+            y: 30px;
+            width: 150px;
+            height: opt_col.preferred-height;
+            background: #2d2d2d;
+            border-width: 1px; border_color: #444;
+
+            opt_col := VerticalBox {
                 padding: 4px;
-                MenuItem { text: "Info"; clicked => { root.close_menu(); root.info_clicked(); } }
+                MenuItem { text: "Info"; click => { close_menu(); root.info_clicked(); } }
+                MenuItem { text: "Color Setting (I)"; click => { close_menu(); root.color_setting(); } }
+                MenuItem { text: "Change Background (D)"; click => { close_menu(); root.background(); } }
             }
         }
-    }
-
 
     function close_menu() {
-        options_menu.close();
-        file_menu.close();
-        menu_active = false;
+        root.file_menu_visible = false;
+        root.options_menu_visible = false;
+        root.menu_active = false;
     }
 
-    function do_show_file_menu(x: length, y: length) {
-        options_menu.close();
-        file_menu_px = x;
-        file_menu_py = y;
-        file_menu.show();
-        menu_active = true;
-    }
-
-    function do_show_options_menu(x: length, y: length) {
-        file_menu.close();
-        options_menu_px = x;
-        options_menu_py = y;
-        options_menu.show();
-        menu_active = true;
-    }
 
 
     // A popupok pozícióját globális property-kben tároljuk, mert a popup belsejébe nem látunk be
-    property <length> file_menu_px;
-    property <length> file_menu_py;
-    property <length> options_menu_px;
-    property <length> options_menu_py;
+    property <bool> file_menu_visible: false;
+    property <bool> options_menu_visible: false;
     property <bool> menu_active: false;
     
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
@@ -195,6 +183,18 @@ export component MainWindow inherits Window {
     in-out property <image> current_image;
     in-out property <float> zoom_level: 1.0;
 
+    callback background();
+    callback up();
+    callback down();
+    callback left();
+    callback righ();
+    callback plus();
+    callback minus();
+    callback red_channel();
+    callback green_channel();
+    callback blue_channel();
+    callback invert_channels();
+    callback color_setting();
     callback open_file();
     callback reopen_file();
     callback save_file();
@@ -215,6 +215,7 @@ export component MainWindow inherits Window {
     callback show_file_menu(length, length);
     callback show_options_menu(length, length);
 
+
     forward_focus: key_handler;
     key_handler := FocusScope {
         key_pressed(event) => {
@@ -230,6 +231,14 @@ export component MainWindow inherits Window {
                         if (event.text == "c") { root.copy_image(); return accept; }
                         if (event.text == "v") { root.paste_image(); return accept; }
                         if (event.text == "x") { root.change_image(); return accept;}
+                        if (event.text == "r") { root.red_channel(); return accept;}
+                        if (event.text == "g") { root.green_channel(); return accept;}
+                        if (event.text == "b") { root.blue_channel(); return accept;}
+                        if (event.text == "i") { root.invert_channels(); return accept;}
+                        if (event.text == up) { root.up(); return accept;}
+                        if (event.text == down) { root.down(); return accept;}
+                        if (event.text == left) { root.left(); return accept;}
+                        if (event.text == right) { root.right(); return accept;}
                     }
                 }
                 else {
@@ -237,11 +246,15 @@ export component MainWindow inherits Window {
                         if (event.text == "s" || event.text == "S" ) { root.save_view(); return accept; }
                     }
                     else {
+                        if (event.text == "c") { root.color_setting(); return accept; }
                         if (event.text == "o") { root.open_file(); return accept; }
                         if (event.text == "r") { root.reopen_file(); return accept; }
                         if (event.text == "s") { root.save_file(); return accept; }
                         if (event.text == "p") { root.recent_paths(); return accept; }
                         if (event.text == "a") { root.about(); return accept; }
+                        if (event.text == "d") { root.background(); return accept; }
+                        if (event.text == plus) { root.plus(); return accept; }
+                        if (event.text == minus) { root.minus(); return accept; }
                     }
                 }
             }
