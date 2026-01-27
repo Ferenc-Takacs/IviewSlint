@@ -135,8 +135,8 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         let mut viewer = state_copy.borrow_mut();
     });
 
-    ui.on_background(move || {
-        println!("background");
+    ui.on_change_background(move || {
+        println!("on_change_background");
         let mut viewer = state_copy.borrow_mut();
         viewer.bg_style = viewer.bg_style.clone().inc();
     });
