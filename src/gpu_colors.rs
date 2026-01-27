@@ -1,4 +1,3 @@
-use eframe::wgpu;
 use crate::colors::ColorSettings;
 //use wgpu::util::DeviceExt;
 use std::sync::Arc;
@@ -52,7 +51,10 @@ pub struct GpuInterface {
 
 impl GpuInterface {
     ///////////////////////////////////////////////////////////////////////////
-    pub fn gpu_init(render_state: &egui_wgpu::RenderState) -> Option<Self> {
+    pub fn gpu_init() -> Option<Self> {
+        None
+    }
+    /*pub fn gpu_init(render_state: &egui_wgpu::RenderState) -> Option<Self> {
         let limits = render_state.adapter.limits();
         if limits.max_storage_textures_per_shader_stage < 1 {
             eprintln!("Hiba: A GPU nem támogatja a Storage Texture-öket (VirtualBox/régi driver).");
@@ -242,11 +244,13 @@ impl GpuInterface {
             bg_layout_apply, // Későbbi kép-bindinghoz
             colset: ColorSettings::default(),
         })
-    }
+    }*/
     
     ///////////////////////////////////////////////////////////////////////////
     /// Frissíti a GPU-n lévő 3D LUT-ot a megadott színbeállítások alapján.
      pub fn change_colorcorrection(&self, colset: &ColorSettings, width: f32, height: f32) {
+     }
+     /*
         let gpu_settings = GpuColorSettings {
             setted: if colset.is_setted() { 1 } else { 0 },
             gamma: colset.gamma,
@@ -289,11 +293,12 @@ impl GpuInterface {
         }
 
         self.queue.submit(Some(encoder.finish()));
-    }
+    }*/
     ///////////////////////////////////////////////////////////////////////////
 
     pub fn generate_image(&self, img_data: &mut [u8], width: u32, height: u32) {
-
+    }
+/*
         let size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
 
         // 1. Forrás kép feltöltése
@@ -413,7 +418,7 @@ impl GpuInterface {
             drop(data);
             staging_buffer.unmap();
         }
-    }    
+    }    */
 
 }
     ///////////////////////////////////////////////////////////////////////////

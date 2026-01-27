@@ -161,7 +161,7 @@ export component MainWindow inherits Window {
                 padding: 4px;
                 MenuItem { text: "Info"; click => { close_menu(); root.info_clicked(); } }
                 MenuItem { text: "Color Setting (I)"; click => { close_menu(); root.color_setting(); } }
-                MenuItem { text: "Change Background (D)"; click => { close_menu(); root.background(); } }
+                MenuItem { text: "Change Background (D)"; click => { close_menu(); root.change_background(); } }
             }
         }
 
@@ -183,11 +183,11 @@ export component MainWindow inherits Window {
     in-out property <image> current_image;
     in-out property <float> zoom_level: 1.0;
 
-    callback background();
+    callback change_background();
     callback up();
     callback down();
     callback left();
-    callback righ();
+    callback right();
     callback plus();
     callback minus();
     callback red_channel();
@@ -235,10 +235,10 @@ export component MainWindow inherits Window {
                         if (event.text == "g") { root.green_channel(); return accept;}
                         if (event.text == "b") { root.blue_channel(); return accept;}
                         if (event.text == "i") { root.invert_channels(); return accept;}
-                        if (event.text == up) { root.up(); return accept;}
-                        if (event.text == down) { root.down(); return accept;}
-                        if (event.text == left) { root.left(); return accept;}
-                        if (event.text == right) { root.right(); return accept;}
+                        if (event.text == Key.UpArrow) { root.up(); return accept;}
+                        if (event.text == Key.DownArrow) { root.down(); return accept;}
+                        if (event.text == Key.LeftArrow) { root.left(); return accept;}
+                        if (event.text == Key.RightArrow) { root.right(); return accept;}
                     }
                 }
                 else {
@@ -252,9 +252,9 @@ export component MainWindow inherits Window {
                         if (event.text == "s") { root.save_file(); return accept; }
                         if (event.text == "p") { root.recent_paths(); return accept; }
                         if (event.text == "a") { root.about(); return accept; }
-                        if (event.text == "d") { root.background(); return accept; }
-                        if (event.text == plus) { root.plus(); return accept; }
-                        if (event.text == minus) { root.minus(); return accept; }
+                        if (event.text == "d") { root.change_background(); return accept; }
+                        if (event.text == "+") { root.plus(); return accept; }
+                        if (event.text == "-") { root.minus(); return accept; }
                     }
                 }
             }

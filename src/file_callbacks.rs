@@ -1,4 +1,6 @@
 use crate::MainWindow; // A build.rs által generált típus
+use crate::image_processing;
+
 use slint::ComponentHandle;
 use slint::*;
 use arboard::*;
@@ -6,6 +8,8 @@ use rfd::FileDialog;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::ImageViewer;
+use std::env;
+use std::path::PathBuf;
 
 pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageViewer>>) {
     let ui = ui_weak.unwrap();    
@@ -29,9 +33,9 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
                 // az előző könyvtárt vesszük
                 viewer.make_image_list()
             }
-            viewer.open_image(&cc.egui_ctx, &path, !clipboard);
+            viewer.open_image(&path, !clipboard);
         } else {
-            viewer.open_image_dialog(&cc.egui_ctx, &None);
+            viewer.open_image_dialog(&None);
         }
     }
     
