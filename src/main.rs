@@ -20,11 +20,14 @@ fn main() -> Result<(), slint::PlatformError> {
     //let icon = load_icon();
     let ui = MainWindow::new()?;
     let state = Rc::new(RefCell::new(ImageViewer::default()));
+    state.borrow_mut().ui_handle = Some(ui.as_weak());
     file_callbacks::file_callbacks(ui.as_weak(), state);
     ui.run()
 }
 
+
 pub struct ImageViewer {
+    pub ui_handle: Option<slint::Weak<MainWindow>>,
     pub image_full_path: Option<PathBuf>,
     pub file_meta: Option<fs::Metadata>,
     pub exif: Option<ExifBlock>,
@@ -77,6 +80,7 @@ pub struct ImageViewer {
 impl Default for ImageViewer {
     fn default() -> Self {
         Self {
+            ui_handle : None,
             image_full_path: None,
             file_meta: None,
             exif: None,

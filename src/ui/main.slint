@@ -28,6 +28,59 @@ component MenuItem inherits Rectangle {
     }
 }
 
+export struct RecentFileSlint {
+    path: string,
+    filename: string,
+}
+
+component RecentItem inherits Rectangle {
+    in property <string> path;
+    in property <string> filename;
+    callback open_clicked(string);
+    callback open_here_clicked(string);
+    callback save_clicked(string);
+    callback save_here_clicked(string);
+
+    height: 60px;
+    background: #333;
+    border_radius: 4px;
+
+    VerticalBox {
+        padding: 5px;
+        Text { text: root.filename; font_size: 14px; color: white; overflow: elide; }
+        
+        HorizontalBox {
+            padding: 0; spacing: 5px;
+            
+            // Egyedi gomb tooltippel
+            for btn_txt in ["Open", "Open Here", "Save", "Save Here"] : Rectangle {
+                width: 60px; height: 25px;
+                background: btn_ta.has_hover ? #555 : #444;
+                border_radius: 2px;
+                
+                Text { text: btn_txt; font_size: 10px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
+                
+                btn_ta := TouchArea {
+                    clicked => {
+                        if (btn_txt == "Open") { root.open_clicked(root.path); }
+                        if (btn_txt == "Open Here") { root.open_here_clicked(root.path); }
+                        if (btn_txt == "Save") { root.save_clicked(root.path); }
+                        if (btn_txt == "Save Here") { root.save_here_clicked(root.path); }
+                    }
+                }
+
+                // TOOLTIP: Csak ha felette van az egér
+                if (btn_ta.has_hover) : Rectangle {
+                    x: 0; y: 30px;
+                    width: 200px; height: 20px;
+                    background: #111;
+                    Text { text: root.path; color: white; font_size: 10px; x: 5px; }
+                }
+            }
+        }
+    }
+}
+
 export component MainWindow inherits Window {
     width: 800px;
     height: 600px;
@@ -135,7 +188,9 @@ export component MainWindow inherits Window {
                 MenuItem { text: "Reopen (R)"; click => { close_menu(); root.reopen_file(); } }
                 MenuItem { text: "Save ... (S)"; click => { close_menu(); root.save_file(); } }
                 MenuItem { text: "Save View ... (Shift+S)"; click => { close_menu(); root.save_file(); } }
+                
                 MenuItem { text: "Recent Paths (P)"; click => { close_menu(); root.recent_paths(); } }
+                
                 Rectangle { height: 1px; background: #444; } // Elválasztó vonal
                 MenuItem { text: "Copy (Ctrl+C)"; click => { close_menu(); root.copy_image(); } }
                 MenuItem { text: "Copy View (Ctrl+Shift+C)"; click => { close_menu(); root.copy_view(); } }
@@ -165,6 +220,32 @@ export component MainWindow inherits Window {
             }
         }
 
+    // OLDALABLAK (Sidebar)
+    if (root.show_recent_sidebar && root.recent_files_data.length > 0) : Rectangle {
+        x: parent.width - 300px; // Jobb oldalra csúsztatva
+        y: 30px;
+        width: 300px;
+        height: parent.height - 30px;
+        background: #252525;
+        Rectangle { x: 0; width: 1px; height: 100%; background: #444; }
+
+        Flickable {
+            viewport_height: content.preferred_height;
+            content := VerticalBox {
+                padding: 10px; spacing: 10px;
+                alignment: start;
+                
+                Text { text: "Recent Paths (P)"; font_size: 18px; color: #aaa; }
+                
+                for data in root.recent_files_data : RecentItem {
+                    path: data.path;
+                    filename: data.filename;
+                    // Callbackek bekötése ide...
+                }
+            }
+        }
+    }
+
     function close_menu() {
         root.file_menu_visible = false;
         root.options_menu_visible = false;
@@ -182,7 +263,13 @@ export component MainWindow inherits Window {
     in-out property <image> pasted_image;
     in-out property <image> current_image;
     in-out property <float> zoom_level: 1.0;
-
+    in_out property <length> offset_x: 0px;
+    in_out property <length> offset_y: 0px;
+    //in property <[{path: string, filename: string}]> recent_files_data;
+    property <bool> show_recent_sidebar: false;
+    in property <[RecentFileSlint]> recent_files_data;
+    
+    
     callback change_background();
     callback up();
     callback down();

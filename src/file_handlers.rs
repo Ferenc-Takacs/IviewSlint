@@ -40,6 +40,12 @@ pub struct SaveSettings {
     pub include_exif: bool,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Default)]
+pub struct RecentFileSerialized {
+    pub path: String,
+    pub filename: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub color_settings: ColorSettings,
@@ -51,7 +57,7 @@ pub struct AppSettings {
     pub fit_open: bool,
     pub same_correction_open: bool,
     pub bg_style: BackgroundStyle,
-    pub recent_files: Vec<PathBuf>,
+    pub recent_files: Vec<RecentFileSerialized>,
     pub use_gpu: bool,
 }
 
@@ -98,8 +104,42 @@ pub fn get_settings_path() -> PathBuf {
     }
 }*/
 
-impl ImageViewer {
+use crate::RecentFileSlint;
 
+impl ImageViewer {
+    
+    pub fn add_to_recent(&mut self, full_path: &PathBuf) {
+        let path = full_path.to_string_lossy().to_string();
+        let filename = full_path.file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        // törli a korábbi azonosat
+        self.config.recent_files.retain(|item| item.path != path.as_str() || item.filename != filename.as_str());
+        
+        let new_entry = RecentFileSerialized {
+            path: path,
+            filename: filename,
+        };
+        self.config.recent_files.insert(0, new_entry);
+        self.config.recent_files.truncate(30);
+        self.refresh_recent_list();
+    }
+
+    pub fn refresh_recent_list(&self) {
+        if let Some(handle) = &self.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                let slint_data: Vec<RecentFileSlint> = self.config.recent_files.iter().map(|item| {
+                    RecentFileSlint {
+                        path: item.path.as_str().into(),
+                        filename: item.filename.as_str().into(),
+                    }
+                }).collect();
+                let model = std::rc::Rc::new(slint::VecModel::from(slint_data));
+                ui.set_recent_files_data(model.into());
+            }
+        }
+    }
+    
     pub fn load_animation(&mut self, path: &PathBuf) {
         let Ok(file) = std::fs::File::open(path) else {
             return;
@@ -153,13 +193,6 @@ impl ImageViewer {
                 self.last_frame_time = std::time::Instant::now();
             }
         }
-    }
-
-    pub fn add_to_recent(&mut self, path: &PathBuf) {
-        self.config.recent_files.retain(|p| p != path);
-        self.config.recent_files.insert(0, path.to_path_buf());
-        self.config.recent_files.truncate(20);
-        self.recent_file_modified = true;
     }
 
     pub fn save_settings(&mut self) {

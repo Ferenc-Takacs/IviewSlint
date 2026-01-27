@@ -30,13 +30,15 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         
         if let Some(path) = start_image {
             if clipboard {
-                // az előző könyvtárt vesszük
+                // az előző futás könyvtárát vesszük
                 viewer.make_image_list()
             }
             viewer.open_image(&path, !clipboard);
         } else {
             viewer.open_image_dialog(&None);
         }
+        
+        viewer.refresh_recent_list();
     }
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -90,6 +92,39 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
             img_height + 30 // +30 pixel a menüsornak
         ));
     }*/
+
+/*
+// MEGJELENÍTÉS (Ez váltja ki az újrarajzolást!)
+if let Some(ui) = ui_weak.upgrade() {
+    ui.set_current_image(slint_img);
+    ui.window().set_size(slint::PhysicalSize::new(w, h + 35));
+}
+//1. Nagyítás és Kicsinyítés (Zoom)
+ui.set_zoom_level(0.5); // 50%-os kicsinyítés
+ui.set_zoom_level(2.0); // 200%-os nagyítás
+//2. Látható kezdőpozíció (Scroll / Offset)
+flick := Flickable {
+    viewport-x: root.offset_x; // Új property-k kellenek
+    viewport-y: root.offset_y;
+    // ...
+}
+//Beállítás Rust-ból:
+ui.set_offset_x(- (kep_szelesseg * zoom / 2.0));
+//3. Egér pozíciója a képen
+img := Image {
+    source: root.current_image;
+    ta := TouchArea {}
+}
+// Ezt a koordinátát leolvashatod Rust-ban:
+let pos = ui.get_mouse_pos(); // Ha csinálsz rá property-t
+let valos_pixel_x = (mouse_x - ui.get_offset_x()) / ui.get_zoom_level();
+//4. Kép méretezése az ablakhoz (Fit to Window)
+let window_size = ui.window().size();
+let scale_x = window_size.width as f32 / img_width as f32;
+let scale_y = (window_size.height as f32 - 35.0) / img_height as f32;
+let final_zoom = scale_x.min(scale_y);
+ui.set_zoom_level(final_zoom);
+*/
 
     let value = state_copy.clone();
     ui.on_open_file(move || {
