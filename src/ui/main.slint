@@ -1,38 +1,6 @@
 
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 
-component MenuItem inherits Rectangle {
-    in property <string> text;
-    in property <bool> is_top_level: false;
-    callback click();
-    callback moved(PointerEvent);
-    width: layout.preferred-width + 20px; 
-    height: is_top_level ? 30px : 25px;
-    background: ta.has_hover ? #4a4a4a : transparent; // Hover effekt
-    border_radius: 3px;
-    ta := TouchArea {
-        mouse_cursor: pointer;
-        clicked => { root.click(); }
-        pointer_event(event) => { root.moved(event); }
-    }    
-    layout := HorizontalLayout {
-        padding_left: 5px;
-        padding_right: 5px;
-        Text {
-            text: root.text;
-            color: white;
-            horizontal_alignment: center;
-            vertical_alignment: center;
-            font_size: 10px;
-        }
-    }
-}
-
-export struct RecentFileSlint {
-    path: string,
-    filename: string,
-}
-
 component RecentItem inherits Rectangle {
     in property <string> path;
     in property <string> filename;
@@ -84,6 +52,38 @@ component RecentItem inherits Rectangle {
             }
         }
     }
+}
+
+component MenuItem inherits Rectangle {
+    in property <string> text;
+    in property <bool> is_top_level: false;
+    callback click();
+    callback moved(PointerEvent);
+    width: layout.preferred-width + 20px; 
+    height: is_top_level ? 30px : 25px;
+    background: ta.has_hover ? #4a4a4a : transparent; // Hover effekt
+    border_radius: 3px;
+    ta := TouchArea {
+        mouse_cursor: pointer;
+        clicked => { root.click(); }
+        pointer_event(event) => { root.moved(event); }
+    }    
+    layout := HorizontalLayout {
+        padding_left: 5px;
+        padding_right: 5px;
+        Text {
+            text: root.text;
+            color: white;
+            horizontal_alignment: center;
+            vertical_alignment: center;
+            font_size: 10px;
+        }
+    }
+}
+
+export struct RecentFileSlint {
+    path: string,
+    filename: string,
 }
 
 export component MainWindow inherits Window {
@@ -242,11 +242,11 @@ export component MainWindow inherits Window {
                 
                 Text { text: "Recent Paths (P)"; font_size: 12px; color: #aaa; }
                 
-                for data in root.recent_files_data : RecentItem {
+                for data[i] in root.recent_files_data : RecentItem {
                     path: data.path;
                     filename: data.filename;
-                    // Callbackek bekötése ide...
-                }
+                    is_selected: i == root.selected_recent_index;
+                    select_me => { root.selected_recent_index = i; }                }
             }
         }
     }
@@ -358,7 +358,5 @@ export component MainWindow inherits Window {
             reject
         }
     }
-
-
 }
 
