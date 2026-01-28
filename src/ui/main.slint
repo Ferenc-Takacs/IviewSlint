@@ -1,82 +1,29 @@
 
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 
-component RecentItem inherits Rectangle {
-    in property <string> path;
-    in property <string> filename;
-    in property <bool> is_selected: false;
-    
-    callback select_me(); // Jelezzük a szülőnek, ha rákattintottak
-    
-    callback open_clicked(string);
-    callback open_here_clicked(string);
-    callback save_clicked(string);
-    callback save_here_clicked(string);
-
-    height: is_selected ? 70px : 30px; // Dinamikus magasság
-    width: 100%; // Kényszerítsük, hogy töltse ki a sávot
-    animate height { duration: 150ms; }
-    background: is_selected ? #444 : #333;
-    border_radius: 4px;
-
-    VerticalBox {
-        padding: 5px;
-        Rectangle {
-            height: 20px;
-            background: ta.has_hover ? (is_selected ? #666 : #555) : (is_selected ? #444 : #333);
-            Text { text: root.filename; font_size: 10px; color: white; x: 0; }
-            ta := TouchArea { mouse_cursor: pointer; clicked => { root.select_me(); } } // Kattintásra választjuk ki
-            if (ta.has_hover) : Rectangle {
-                x: 0; y: 30px;
-                width: 200px; height: 20px;
-                background: #111;
-                Text { text: root.path; color: white; font_size: 10px; x: 5px; }
-            }
-        }
-        
-        if (root.is_selected) : HorizontalBox {
-            padding: 0; spacing: 4px;
-            for btn_txt in ["Open", "Open Here", "Save", "Save Here"] : Rectangle {
-                width: 60px; height: 25px;
-                background: btn_ta.has_hover ? #555 : #444;
-                border_radius: 2px;
-                Text { text: btn_txt; font_size: 10px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
-                btn_ta := TouchArea {
-                    clicked => {
-                        if (btn_txt == "Open") { root.open_clicked(root.path); }
-                        if (btn_txt == "Open Here") { root.open_here_clicked(root.path); }
-                        if (btn_txt == "Save") { root.save_clicked(root.path); }
-                        if (btn_txt == "Save Here") { root.save_here_clicked(root.path); }
-                    }
-                }
-            }
-        }
-    }
-}
-
 component MenuItem inherits Rectangle {
     in property <string> text;
     in property <bool> is_top_level: false;
     callback click();
     callback moved(PointerEvent);
     width: layout.preferred-width + 20px; 
-    height: is_top_level ? 30px : 25px;
+    height: is_top_level ? 20px : 16px;
     background: ta.has_hover ? #4a4a4a : transparent; // Hover effekt
-    border_radius: 3px;
+    border_radius: 2px;
     ta := TouchArea {
         mouse_cursor: pointer;
         clicked => { root.click(); }
         pointer_event(event) => { root.moved(event); }
     }    
     layout := HorizontalLayout {
-        padding_left: 5px;
-        padding_right: 5px;
+        padding_left: 2px;
+        padding_right: 2px;
         Text {
             text: root.text;
             color: white;
             horizontal_alignment: center;
             vertical_alignment: center;
-            font_size: 10px;
+            font_size: 12px;
         }
     }
 }
@@ -88,30 +35,30 @@ export struct RecentFileSlint {
 
 export component MainWindow inherits Window {
     width: 800px;
-    height: 600px;
+    height: 150px;
     title: "IviewSlint - Image viewer";
     background: #1a1a1a;
 
-
+    // menu raw, and image
     VerticalBox {
         padding: 0px;
         spacing: 0px;
         
         Rectangle {
-            height: 30px;
+            height: 20px;
             background: #252525;
 
             HorizontalBox {
-                padding_left: 5px; padding_right: 5px;
+                padding_left: 2px; padding_right: 2px;
                 padding_top: 0px; padding_bottom: 0px;
-                spacing: 5px;
+                spacing: 2px;
                 alignment: start;
 
                 file_btn := MenuItem {
                     text: "File";
                     is_top_level: true;
                     click => {
-                        root.title = "File Katt!";
+                        //root.title = "File Katt!";
                         root.file_menu_visible = !root.file_menu_visible;
                         root.options_menu_visible = false;
                         root.menu_active = root.file_menu_visible;
@@ -128,7 +75,7 @@ export component MainWindow inherits Window {
                     text: "Options";
                     is_top_level: true;
                     click => {
-                        root.title = "Option Katt!"; 
+                        //root.title = "Option Katt!"; 
                         root.options_menu_visible = !root.options_menu_visible;
                         root.file_menu_visible = false;
                         root.menu_active = root.options_menu_visible;
@@ -146,14 +93,17 @@ export component MainWindow inherits Window {
                 
                 // Léptető Gombok
                 MenuItem { text: "<< B"; is_top_level: true; click => {
-                    root.title = "<< Katt!";  close_menu(); root.prev_image() } width: 60px; }
+                    //root.title = "<< Katt!";
+                    close_menu(); root.prev_image() } width: 60px; }
 
                 MenuItem { text: ">> N"; is_top_level: true; click => {
-                    root.title = ">> Katt!"; close_menu(); root.next_image() } width: 60px; }
+                    //root.title = ">> Katt!";
+                    close_menu(); root.next_image() } width: 60px; }
 
                 // Animáció vezérlő
                 MenuItem { text: "▶ Play"; is_top_level: true; click => {
-                    root.title = "Play Katt!"; close_menu(); root.play_animation() }  width: 80px; }
+                    //root.title = "Play Katt!";
+                    close_menu(); root.play_animation() }  width: 80px; }
             }
         }
 
@@ -173,88 +123,171 @@ export component MainWindow inherits Window {
                 }
             }
             
-            if (root.menu_active) : TouchArea {clicked => { close_menu(); } }
+            if (root.menu_active || root.show_recent_sidebar) : TouchArea {clicked => {
+                close_menu();
+                close_recent();
+            } }
         }
 
     }
 
+    // File submenu
     if (root.file_menu_visible) :
         Rectangle {
             x: file_btn.absolute-position.x;
-            y: 30px; // A menüsor magassága
+            y: 20px; // A menüsor magassága
             width: 180px;
             height: file_col.preferred-height;
             background: #2d2d2d;
             border-width: 1px; border-color: #444;
             
             file_col := VerticalBox {
-                padding: 4px; spacing: 2px;
+                padding: 2px; spacing: 2px;
                 MenuItem { text: "Open ... (O)"; click => { close_menu(); root.open_file(); } }
                 MenuItem { text: "Reopen (R)"; click => { close_menu(); root.reopen_file(); } }
                 MenuItem { text: "Save ... (S)"; click => { close_menu(); root.save_file(); } }
                 MenuItem { text: "Save View ... (Shift+S)"; click => { close_menu(); root.save_file(); } }
-                
-                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); root.show_recent_sidebar = !root.show_recent_sidebar; } }
-                
-                Rectangle { height: 1px; background: #444; } // Elválasztó vonal
+                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); change_recent(); } }
+                Rectangle { height: 2px; background: #444; } // Elválasztó vonal
                 MenuItem { text: "Copy (Ctrl+C)"; click => { close_menu(); root.copy_image(); } }
                 MenuItem { text: "Copy View (Ctrl+Shift+C)"; click => { close_menu(); root.copy_view(); } }
                 MenuItem { text: "Past (Ctrl+V)"; click => { close_menu(); root.paste_image(); } }
                 MenuItem { text: "Change (Ctrl+X)"; click => { close_menu(); root.change_image(); } }
                 MenuItem { text: "Change View (Ctrl+Shift+X)"; click => { close_menu(); root.change_view(); } }
-                Rectangle { height: 1px; background: #444; } // Elválasztó vonal
+                Rectangle { height: 2px; background: #444; } // Elválasztó vonal
                 MenuItem { text: "About (A)"; click => { close_menu(); root.about(); } }
                 MenuItem { text: "Exit"; click => { close_menu(); root.exit(); } }
             }
         }
 
+    // Options submenu
     if (root.options_menu_visible) :
         Rectangle {
             x: opt_btn.absolute-position.x;
-            y: 30px;
+            y: 20px;
             width: 150px;
             height: opt_col.preferred-height;
             background: #2d2d2d;
             border-width: 1px; border_color: #444;
 
             opt_col := VerticalBox {
-                padding: 4px;
-                MenuItem { text: "Info"; click => { close_menu(); root.info_clicked(); } }
-                MenuItem { text: "Color Setting (I)"; click => { close_menu(); root.color_setting(); } }
+                padding: 2px; spacing: 2px;
+                MenuItem { text: "Info (I)"; click => { close_menu(); root.info_clicked(); } }
+                MenuItem { text: "Color Setting (C)"; click => { close_menu(); root.color_setting(); } }
                 MenuItem { text: "Change Background (D)"; click => { close_menu(); root.change_background(); } }
             }
         }
 
-    // OLDALABLAK (Sidebar)
+    // recent file list
     if (root.show_recent_sidebar && root.recent_files_data.length > 0) : Rectangle {
-        x: parent.width - 300px; // Jobb oldalra csúsztatva
-        y: 30px;
-        width: 300px;
-        height: parent.height - 30px;
+        x: 0px;
+        y: 20px;
+        width: 200px;
+        height: content.preferred-height;
+        //height: parent.height - 20px;
         background: #252525;
-        Rectangle { x: 0; width: 1px; height: 100%; background: #444; }
+        Rectangle { x: 2px; width: 2px; height: 100%; background: #444; }
 
         Flickable {
             viewport_height: content.preferred_height;
+
             content := VerticalBox {
-                padding: 10px; spacing: 10px;
+
+                padding: 2px; spacing: 2px;
                 alignment: start;
-                
+
                 Text { text: "Recent Paths (P)"; font_size: 12px; color: #aaa; }
-                
-                for data[i] in root.recent_files_data : RecentItem {
-                    path: data.path;
-                    filename: data.filename;
-                    is_selected: i == root.selected_recent_index;
-                    select_me => { root.selected_recent_index = i; }                }
-                    open_clicked(p) => { root.open_recent(p); }
-                    open_here_clicked(p) => { root.open_here_recent(p); }
-                    save_clicked(p) => { root.save_recent(p); }
-                    save_here_clicked(p) => { root.save_here_recent(p); }
+
+                for data[i] in root.recent_files_data : Rectangle {
+                    height: 20px;
+                    width: 100%; // Kényszerítsük, hogy töltse ki a sávot
+                    animate height { duration: 150ms; }
+                    background: #333;
+                    border_radius: 2px;
+
+                    VerticalBox {
+                        padding: 2px;
+                        Rectangle {
+                            height: 16px;
+                            background: root.selected_recent_index >= 0 ? #444 : #333;
+                            Text { text: data.filename; font_size: 12px; color: white; x: 0; }
+                            but := TouchArea {
+                                mouse_cursor: pointer;
+                                clicked => {
+                                    root.selected_recent_index = i;
+                                    root.selected_recent_path = data.path;
+                                }
+
+                                pointer-event(event) => {
+                                    if (event.kind == PointerEventKind.move) {
+                                        root.hover_x = parent.x + 5px;
+                                        root.hover_y = parent.y - 5px;
+                                        root.hover_path = data.path;
+                                        root.show_hover = true;
+                                    }
+                                    else if ( event.kind == PointerEventKind.cancel) {
+                                        root.show_hover = false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
+    // menu for selected recent file
+    if (root.selected_recent_index >= 0) : Rectangle {
+        x: root.hover_x;
+        y: root.hover_y; 
+        width: label.preferred-width + 10px;
+        height: 20px;
+        background: #555;
+        border-radius: 2px;
+        //Text { text: root.selected_recent_path; color: white; }
+        label := HorizontalBox {
+            padding: 0;
+            spacing: 2px;
+            for btn_txt in ["Open", "Open Here", "Save", "Save Here"] : Rectangle {
+                width: label1.preferred-width + 12px;
+                background: btn_ta.has_hover ? #555 : #444;
+                border_radius: 2px;
+                label1 := Text { text: btn_txt; font_size: 12px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
+                btn_ta := TouchArea {
+                    clicked => {
+                        if (btn_txt == "Open") { root.open_recent(root.selected_recent_path); }
+                        if (btn_txt == "Open Here") { root.open_here_recent(root.selected_recent_path); }
+                        if (btn_txt == "Save") { root.save_recent(root.selected_recent_path); }
+                        if (btn_txt == "Save Here") { root.save_here_recent(root.selected_recent_path); }
+                    }
+                }
+            }
+        }
+    }
+
+    // tooltip of selected recent file
+    if (root.show_hover) : Rectangle {
+        x: root.hover_x;
+        y: root.hover_y; 
+        width: label2.preferred-width + 10px;
+        height: 20px;
+        background: #555;
+        border-radius: 2px;
+        label2 := Text { text: root.hover_path; color: white; }
+    }
+
+
+
+    function close_recent() {
+        root.show_hover = false;
+        root.selected_recent_index = -1;
+        root.show_recent_sidebar = false;
+    }
+    function change_recent() {
+        if( show_recent_sidebar ) { close_recent(); }
+        else { root.show_recent_sidebar = true; }
+    }
     function close_menu() {
         root.file_menu_visible = false;
         root.options_menu_visible = false;
@@ -267,7 +300,13 @@ export component MainWindow inherits Window {
     property <bool> file_menu_visible: false;
     property <bool> options_menu_visible: false;
     property <bool> menu_active: false;
+    property <bool> show_recent_sidebar: false;
+    property <bool> show_hover: false;
     property <int> selected_recent_index: -1;
+    property <string> hover_path;
+    property <string> selected_recent_path;
+    property <length> hover_x: 0;
+    property <length> hover_y: 0;
 
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
     in-out property <image> pasted_image;
@@ -276,7 +315,6 @@ export component MainWindow inherits Window {
     in_out property <length> offset_x: 0px;
     in_out property <length> offset_y: 0px;
     //in property <[{path: string, filename: string}]> recent_files_data;
-    property <bool> show_recent_sidebar: false;
     in property <[RecentFileSlint]> recent_files_data;
     
     
@@ -347,11 +385,12 @@ export component MainWindow inherits Window {
                         if (event.text == "s" || event.text == "S" ) { root.save_view(); return accept; }
                     }
                     else {
+                        if (event.text == "i") { root.info_clicked(); return accept; }
                         if (event.text == "c") { root.color_setting(); return accept; }
                         if (event.text == "o") { root.open_file(); return accept; }
                         if (event.text == "r") { root.reopen_file(); return accept; }
                         if (event.text == "s") { root.save_file(); return accept; }
-                        if (event.text == "p") { root.show_recent_sidebar = !root.show_recent_sidebar; return accept; }
+                        if (event.text == "p") { change_recent(); return accept; }
                         if (event.text == "a") { root.about(); return accept; }
                         if (event.text == "d") { root.change_background(); return accept; }
                         if (event.text == "+") { root.plus(); return accept; }

@@ -136,24 +136,24 @@ ui.set_zoom_level(final_zoom);
 
     let value = state_copy.clone();
     ui.on_open_recent(move |path| {
-        println!("on_open_recent");
         let path_buf = PathBuf::from(path.as_str());
+        println!("on_open_recent {:?}", path_buf);
         let mut viewer = value.borrow_mut();
         viewer.open_image(&path_buf,true);
     });
     
     let value = state_copy.clone();
     ui.on_open_here_recent(move |path| {
-        println!("on_open_here_recent");
         let path_buf = PathBuf::from(path.as_str());
+        println!("on_open_here_recent {:?}", path_buf);
         let mut viewer = value.borrow_mut();
         viewer.open_image_dialog(&Some(path_buf));
     });
     
     let value = state_copy.clone();
     ui.on_save_recent(move |path| {
-        println!("on_save_recent");
         let path_buf = PathBuf::from(path.as_str());
+        println!("on_save_recent {:?}", path_buf);
         let mut viewer = value.borrow_mut();
         viewer.save_original = true;
         viewer.starting_save(&Some(path_buf));
@@ -161,8 +161,8 @@ ui.set_zoom_level(final_zoom);
     
     let value = state_copy.clone();
     ui.on_save_here_recent(move |path| {
-        println!("on_save_here_recent");
         let path_buf = PathBuf::from(path.as_str());
+        println!("on_save_here_recent {:?}", path_buf);
         let mut viewer = value.borrow_mut();
         viewer.save_original = false;
         viewer.starting_save(&Some(path_buf));
