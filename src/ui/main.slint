@@ -23,7 +23,7 @@ component MenuItem inherits Rectangle {
             color: white;
             horizontal_alignment: center;
             vertical_alignment: center;
-            font_size: 12px;
+            font_size: 10px;
         }
     }
 }
@@ -36,30 +36,43 @@ export struct RecentFileSlint {
 component RecentItem inherits Rectangle {
     in property <string> path;
     in property <string> filename;
+    in property <bool> is_selected: false;
+    
+    callback select_me(); // Jelezzük a szülőnek, ha rákattintottak
+    
     callback open_recent(string);
     callback open_here_recent(string);
     callback save_recent(string);
     callback save_here_recent(string);
 
-    height: 60px;
-    background: #333;
+    height: is_selected ? 70px : 30px; // Dinamikus magasság
+    width: 100%; // Kényszerítsük, hogy töltse ki a sávot
+    animate height { duration: 150ms; }
+    background: is_selected ? #444 : #333;
     border_radius: 4px;
 
     VerticalBox {
         padding: 5px;
-        Text { text: root.filename; font_size: 14px; color: white; overflow: elide; }
+        Rectangle {
+            height: 20px;
+            background: ta.has_hover ? (is_selected ? #666 : #555) : (is_selected ? #444 : #333);
+            Text { text: root.filename; font_size: 10px; color: white; x: 0; }
+            ta := TouchArea { mouse_cursor: pointer; clicked => { root.select_me(); } } // Kattintásra választjuk ki
+            if (ta.has_hover) : Rectangle {
+                x: 0; y: 30px;
+                width: 200px; height: 20px;
+                background: #111;
+                Text { text: root.path; color: white; font_size: 10px; x: 5px; }
+            }
+        }
         
-        HorizontalBox {
-            padding: 0; spacing: 5px;
-            
-            // Egyedi gomb tooltippel
+        if (root.is_selected) : HorizontalBox {
+            padding: 0; spacing: 4px;
             for btn_txt in ["Open", "Open Here", "Save", "Save Here"] : Rectangle {
                 width: 60px; height: 25px;
                 background: btn_ta.has_hover ? #555 : #444;
                 border_radius: 2px;
-                
                 Text { text: btn_txt; font_size: 10px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
-                
                 btn_ta := TouchArea {
                     clicked => {
                         if (btn_txt == "Open") { root.open_recent(root.path); }
@@ -67,14 +80,6 @@ component RecentItem inherits Rectangle {
                         if (btn_txt == "Save") { root.save_recent(root.path); }
                         if (btn_txt == "Save Here") { root.save_here_recent(root.path); }
                     }
-                }
-
-                // TOOLTIP: Csak ha felette van az egér
-                if (btn_ta.has_hover) : Rectangle {
-                    x: 0; y: 30px;
-                    width: 200px; height: 20px;
-                    background: #111;
-                    Text { text: root.path; color: white; font_size: 10px; x: 5px; }
                 }
             }
         }
@@ -235,7 +240,7 @@ export component MainWindow inherits Window {
                 padding: 10px; spacing: 10px;
                 alignment: start;
                 
-                Text { text: "Recent Paths (P)"; font_size: 18px; color: #aaa; }
+                Text { text: "Recent Paths (P)"; font_size: 12px; color: #aaa; }
                 
                 for data in root.recent_files_data : RecentItem {
                     path: data.path;
@@ -258,7 +263,8 @@ export component MainWindow inherits Window {
     property <bool> file_menu_visible: false;
     property <bool> options_menu_visible: false;
     property <bool> menu_active: false;
-    
+    property <int> selected_recent_index: -1;
+
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
     in-out property <image> pasted_image;
     in-out property <image> current_image;

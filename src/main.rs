@@ -21,8 +21,11 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
     let state = Rc::new(RefCell::new(ImageViewer::default()));
     state.borrow_mut().ui_handle = Some(ui.as_weak());
-    file_callbacks::file_callbacks(ui.as_weak(), state);
-    ui.run()
+    file_callbacks::file_callbacks(ui.as_weak(), state.clone());
+    let res = ui.run();
+    let mut viewer = state.borrow_mut();
+    viewer.save_settings();
+    res
 }
 
 pub struct ImageViewer {

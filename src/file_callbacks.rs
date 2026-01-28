@@ -330,11 +330,8 @@ ui.set_zoom_level(final_zoom);
         //let mut viewer = value.borrow_mut();
     });
     
-    let value = state_copy.clone();
     ui.on_exit(move || {
         println!("exit");
-        let mut viewer = value.borrow_mut();
-        viewer.save_settings();
         if let Some(ui) = ui_weak.upgrade() {
             let _ = ui.window().hide();
         }
