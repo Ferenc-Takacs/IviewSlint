@@ -13,7 +13,7 @@ use crate::colors::*;
 use crate::image_processing::*;
 use crate::ImageViewer;
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum SortDir {
     Name,
     Ext,
@@ -31,6 +31,7 @@ pub enum SaveFormat {
     Tif,
 }
 
+#[derive(Debug)]
 pub struct SaveSettings {
     pub full_path: PathBuf,
     pub saveformat: SaveFormat,
@@ -40,13 +41,13 @@ pub struct SaveSettings {
     pub include_exif: bool,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct RecentFileSerialized {
     pub path: String,
     pub filename: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub color_settings: ColorSettings,
     pub sort_dir: SortDir,

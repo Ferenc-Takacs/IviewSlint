@@ -27,7 +27,7 @@ pub fn save_clipboard_image() -> Option<PathBuf> {
 }
 
 
-#[derive(PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum BackgroundStyle {
     Black,
     Gray,

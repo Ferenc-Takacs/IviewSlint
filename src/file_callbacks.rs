@@ -37,8 +37,15 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         } else {
             viewer.open_image_dialog(&None);
         }
-        
+        if viewer.config.recent_files.len() == 0 {
+            viewer.add_to_recent(&PathBuf::from("c:\\rust\\a.jpg"));
+            viewer.add_to_recent(&PathBuf::from("c:\\rust\\b.jpg"));
+            viewer.add_to_recent(&PathBuf::from("c:\\rust\\c.jpg"));
+        }
+
         viewer.refresh_recent_list();
+        let rec = &viewer.config.recent_files;
+        println!("{:?}",rec);
     }
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -124,8 +131,43 @@ let scale_x = window_size.width as f32 / img_width as f32;
 let scale_y = (window_size.height as f32 - 35.0) / img_height as f32;
 let final_zoom = scale_x.min(scale_y);
 ui.set_zoom_level(final_zoom);
+
 */
 
+    let value = state_copy.clone();
+    ui.on_open_recent(move |path| {
+        println!("on_open_recent");
+        let path_buf = PathBuf::from(path.as_str());
+        let mut viewer = value.borrow_mut();
+        viewer.open_image(&path_buf,true);
+    });
+    
+    let value = state_copy.clone();
+    ui.on_open_here_recent(move |path| {
+        println!("on_open_here_recent");
+        let path_buf = PathBuf::from(path.as_str());
+        let mut viewer = value.borrow_mut();
+        viewer.open_image_dialog(&Some(path_buf));
+    });
+    
+    let value = state_copy.clone();
+    ui.on_save_recent(move |path| {
+        println!("on_save_recent");
+        let path_buf = PathBuf::from(path.as_str());
+        let mut viewer = value.borrow_mut();
+        viewer.save_original = true;
+        viewer.starting_save(&Some(path_buf));
+    });
+    
+    let value = state_copy.clone();
+    ui.on_save_here_recent(move |path| {
+        println!("on_save_here_recent");
+        let path_buf = PathBuf::from(path.as_str());
+        let mut viewer = value.borrow_mut();
+        viewer.save_original = false;
+        viewer.starting_save(&Some(path_buf));
+    });
+    
     let value = state_copy.clone();
     ui.on_open_file(move || {
         println!("Open");
@@ -157,11 +199,11 @@ ui.set_zoom_level(final_zoom);
     });
     
     //let value = state_copy.clone();
-    ui.on_recent_paths(move || {
+    /*ui.on_recent_paths(move || {
         println!("Recent paths");
         //let mut viewer = value.borrow_mut();
         // TODO !!!! viewer.show_recent_window = !self.show_recent_window && !self.config.recent_files.is_empty();
-    });
+    });*/
     
     let value = state_copy.clone();
     ui.on_prev_image(move || {
@@ -288,10 +330,11 @@ ui.set_zoom_level(final_zoom);
         //let mut viewer = value.borrow_mut();
     });
     
-    //let value = state_copy.clone();
+    let value = state_copy.clone();
     ui.on_exit(move || {
         println!("exit");
-        //let mut viewer = value.borrow_mut();
+        let mut viewer = value.borrow_mut();
+        viewer.save_settings();
         if let Some(ui) = ui_weak.upgrade() {
             let _ = ui.window().hide();
         }

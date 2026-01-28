@@ -36,10 +36,10 @@ export struct RecentFileSlint {
 component RecentItem inherits Rectangle {
     in property <string> path;
     in property <string> filename;
-    callback open_clicked(string);
-    callback open_here_clicked(string);
-    callback save_clicked(string);
-    callback save_here_clicked(string);
+    callback open_recent(string);
+    callback open_here_recent(string);
+    callback save_recent(string);
+    callback save_here_recent(string);
 
     height: 60px;
     background: #333;
@@ -62,10 +62,10 @@ component RecentItem inherits Rectangle {
                 
                 btn_ta := TouchArea {
                     clicked => {
-                        if (btn_txt == "Open") { root.open_clicked(root.path); }
-                        if (btn_txt == "Open Here") { root.open_here_clicked(root.path); }
-                        if (btn_txt == "Save") { root.save_clicked(root.path); }
-                        if (btn_txt == "Save Here") { root.save_here_clicked(root.path); }
+                        if (btn_txt == "Open") { root.open_recent(root.path); }
+                        if (btn_txt == "Open Here") { root.open_here_recent(root.path); }
+                        if (btn_txt == "Save") { root.save_recent(root.path); }
+                        if (btn_txt == "Save Here") { root.save_here_recent(root.path); }
                     }
                 }
 
@@ -189,7 +189,7 @@ export component MainWindow inherits Window {
                 MenuItem { text: "Save ... (S)"; click => { close_menu(); root.save_file(); } }
                 MenuItem { text: "Save View ... (Shift+S)"; click => { close_menu(); root.save_file(); } }
                 
-                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); root.recent_paths(); } }
+                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); root.show_recent_sidebar = !root.show_recent_sidebar; } }
                 
                 Rectangle { height: 1px; background: #444; } // Elválasztó vonal
                 MenuItem { text: "Copy (Ctrl+C)"; click => { close_menu(); root.copy_image(); } }
@@ -270,6 +270,10 @@ export component MainWindow inherits Window {
     in property <[RecentFileSlint]> recent_files_data;
     
     
+    callback open_recent(string);
+    callback open_here_recent(string);
+    callback save_recent(string);
+    callback save_here_recent(string);
     callback change_background();
     callback up();
     callback down();
@@ -286,7 +290,7 @@ export component MainWindow inherits Window {
     callback reopen_file();
     callback save_file();
     callback save_view();
-    callback recent_paths();
+    //callback recent_paths();
     callback copy_image();
     callback copy_view();
     callback paste_image();
@@ -337,7 +341,7 @@ export component MainWindow inherits Window {
                         if (event.text == "o") { root.open_file(); return accept; }
                         if (event.text == "r") { root.reopen_file(); return accept; }
                         if (event.text == "s") { root.save_file(); return accept; }
-                        if (event.text == "p") { root.recent_paths(); return accept; }
+                        if (event.text == "p") { root.show_recent_sidebar = !root.show_recent_sidebar; return accept; }
                         if (event.text == "a") { root.about(); return accept; }
                         if (event.text == "d") { root.change_background(); return accept; }
                         if (event.text == "+") { root.plus(); return accept; }

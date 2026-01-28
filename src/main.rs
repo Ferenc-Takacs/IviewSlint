@@ -25,7 +25,6 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.run()
 }
 
-
 pub struct ImageViewer {
     pub ui_handle: Option<slint::Weak<MainWindow>>,
     pub image_full_path: Option<PathBuf>,

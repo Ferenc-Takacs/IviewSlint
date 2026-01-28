@@ -10,7 +10,7 @@ fn r(th: f32) -> f32 {
     (ra * rb) / (rb * th.cos()).hypot(ra * th.sin())
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct ColorSettings {
     //pub is_default: bool,
     pub gamma: f32,
@@ -196,7 +196,7 @@ impl ColorSettings {
 
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Lut4ColorSettings {
     pub size : usize,
     pub data : Vec<u8>, // RGBA adatok
@@ -405,7 +405,7 @@ impl Lut4ColorSettings {
 7 = The 0th row is the visual right-hand side of the image, and the 0th column is the visual bottom.
 8 = The 0th row is the visual left-hand side of the image, and the 0th column is the visual bottom.
 */
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum Rotate {
     Rotate0,
     Rotate90,
