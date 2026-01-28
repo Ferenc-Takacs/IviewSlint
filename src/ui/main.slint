@@ -8,10 +8,10 @@ component RecentItem inherits Rectangle {
     
     callback select_me(); // Jelezzük a szülőnek, ha rákattintottak
     
-    callback open_recent(string);
-    callback open_here_recent(string);
-    callback save_recent(string);
-    callback save_here_recent(string);
+    callback open_clicked(string);
+    callback open_here_clicked(string);
+    callback save_clicked(string);
+    callback save_here_clicked(string);
 
     height: is_selected ? 70px : 30px; // Dinamikus magasság
     width: 100%; // Kényszerítsük, hogy töltse ki a sávot
@@ -43,10 +43,10 @@ component RecentItem inherits Rectangle {
                 Text { text: btn_txt; font_size: 10px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
                 btn_ta := TouchArea {
                     clicked => {
-                        if (btn_txt == "Open") { root.open_recent(root.path); }
-                        if (btn_txt == "Open Here") { root.open_here_recent(root.path); }
-                        if (btn_txt == "Save") { root.save_recent(root.path); }
-                        if (btn_txt == "Save Here") { root.save_here_recent(root.path); }
+                        if (btn_txt == "Open") { root.open_clicked(root.path); }
+                        if (btn_txt == "Open Here") { root.open_here_clicked(root.path); }
+                        if (btn_txt == "Save") { root.save_clicked(root.path); }
+                        if (btn_txt == "Save Here") { root.save_here_clicked(root.path); }
                     }
                 }
             }
@@ -247,6 +247,10 @@ export component MainWindow inherits Window {
                     filename: data.filename;
                     is_selected: i == root.selected_recent_index;
                     select_me => { root.selected_recent_index = i; }                }
+                    open_clicked(p) => { root.open_recent(p); }
+                    open_here_clicked(p) => { root.open_here_recent(p); }
+                    save_clicked(p) => { root.save_recent(p); }
+                    save_here_clicked(p) => { root.save_here_recent(p); }
             }
         }
     }
