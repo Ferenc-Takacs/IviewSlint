@@ -47,6 +47,7 @@ pub struct ImageViewer {
     pub original_image: Option<image::DynamicImage>,
     pub rgba_image: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     
+    pub screen_size: (f32, f32), 
     pub image_size: (f32, f32), 
     pub center: bool,
     pub show_info: bool,
@@ -97,6 +98,7 @@ impl Default for ImageViewer {
             current_slint_image: None,
             original_image: None,
             rgba_image: None,
+            screen_size: (1280.0, 1024.0),
             image_size: (800.0, 600.0),
             center: true,
             show_info: false,

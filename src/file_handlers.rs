@@ -115,7 +115,7 @@ impl ImageViewer {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
         // törli a korábbi azonosat
-        self.config.recent_files.retain(|item| item.path != path.as_str() || item.filename != filename.as_str());
+        self.config.recent_files.retain(|item| item.path != path.as_str());
         
         let new_entry = RecentFileSerialized {
             path: path,

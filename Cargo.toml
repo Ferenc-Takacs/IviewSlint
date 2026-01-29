@@ -24,6 +24,7 @@ rayon = "1.10"
 chrono = "0.4"
 img-parts = "0.4.0"
 base64 = "0.22.1"
+display-info = "0.5.7"
 
 [build-dependencies]
 winres = "0.1"

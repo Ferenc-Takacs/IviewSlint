@@ -40,7 +40,7 @@ pub enum BackgroundStyle {
 
 impl BackgroundStyle {
     pub fn inc(self) -> BackgroundStyle {
-        return match self {
+        match self {
             BackgroundStyle::Black => BackgroundStyle::Gray,
             BackgroundStyle::Gray => BackgroundStyle::White,
             BackgroundStyle::White => BackgroundStyle::Green,
@@ -48,7 +48,18 @@ impl BackgroundStyle {
             BackgroundStyle::DarkBright => BackgroundStyle::GreenMagenta,
             BackgroundStyle::GreenMagenta => BackgroundStyle::BlackBrown,
             BackgroundStyle::BlackBrown => BackgroundStyle::Black,
-        };
+        }
+    }
+    pub fn from(i: i32) -> BackgroundStyle {
+        match i {
+            1 => BackgroundStyle::Gray,
+            2 => BackgroundStyle::White,
+            3 => BackgroundStyle::Green,
+            4 => BackgroundStyle::DarkBright,
+            5 => BackgroundStyle::GreenMagenta,
+            6 => BackgroundStyle::BlackBrown,
+            _ => BackgroundStyle::Black,
+        }
     }
 }
 

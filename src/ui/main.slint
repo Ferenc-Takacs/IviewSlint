@@ -1,115 +1,326 @@
 
-import { VerticalBox, HorizontalBox } from "std-widgets.slint";
-
-component MenuItem inherits Rectangle {
-    in property <string> text;
-    in property <bool> is_top_level: false;
-    callback click();
-    callback moved(PointerEvent);
-    width: layout.preferred-width + 20px; 
-    height: is_top_level ? 20px : 16px;
-    background: ta.has_hover ? #4a4a4a : transparent; // Hover effekt
-    border_radius: 2px;
-    ta := TouchArea {
-        mouse_cursor: pointer;
-        clicked => { root.click(); }
-        pointer_event(event) => { root.moved(event); }
-    }    
-    layout := HorizontalLayout {
-        padding_left: 2px;
-        padding_right: 2px;
-        Text {
-            text: root.text;
-            color: white;
-            horizontal_alignment: center;
-            vertical_alignment: center;
-            font_size: 12px;
-        }
-    }
-}
+import { VerticalBox, HorizontalBox, Button } from "std-widgets.slint";
 
 export struct RecentFileSlint {
     path: string,
     filename: string,
 }
 
-export component MainWindow inherits Window {
-    width: 800px;
-    height: 150px;
-    title: "IviewSlint - Image viewer";
-    background: #1a1a1a;
+export component AboutIView inherits Window {
+    VerticalLayout {
+        x: (parent.width - self.width) / 2.0;
+        y: (parent.height - self.height) / 2.0;
+        height:200px;
+        width: 300px;
+        //close-policy: close-on-click-outside;
+        //close-on-click;
+        Rectangle {
+            background: white;
+            VerticalLayout {
+                Text {
+                    text: "IviewSlint v1.0";
+                    horizontal-alignment: center;
+                    stroke-width: 1px;
+                    stroke: lightblue;
+                    stroke-style: center;
+                    font-size: 20px;
+                    color: lightblue;
+                }
+                Text {
+                    text: "Rust & Slint alapú képnézegető";
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: "© 2026 Ferenc Takács";
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
+}
 
-    // menu raw, and image
+export component MainWindow inherits Window {
+    width: screen_width;
+    height: screen_height;
+    title: "IviewSlint - Image viewer";
+
+    MenuBar {
+        Menu {
+            title: @tr("File");
+            MenuItem {
+                title: "Open ... (O)";
+                activated => { open_file(); }
+            }
+            MenuItem {
+                title: "Reopent (R)";
+                activated => { reopen_file(); }
+            }
+            MenuItem {
+                title: @tr("Save ... (S)");
+                activated => { save_file(); }
+            }
+            MenuItem {
+                title: "Save View (Shift+S)";
+                activated => { save_view(); }
+            }
+            Menu {
+                title: @tr("Recent Paths (P)");
+                for data in root.recent_files_data :
+                Menu {
+                    title: data.filename;
+                    MenuItem {
+                        title: "Open " + data.path;
+                        activated => { root.open_recent(data.path); }
+                    }
+                    MenuItem {
+                        title: "Open Here ...";
+                        activated => { root.open_here_recent(data.path); }
+                    }
+                    MenuItem {
+                        title: "Save ...";
+                        activated => { root.save_recent(data.path); }
+                    }
+                    MenuItem {
+                        title: "Save View ..,";
+                        activated => { root.save_view_recent(data.path); }
+                    }
+                }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Copy (Ctrl+C)");
+                activated => { copy_image(); }
+            }
+            MenuItem {
+                title: @tr("Copy View (Ctrl+Shift+C)");
+                activated => { copy_view(); }
+            }
+            MenuItem {
+                title: @tr("Paste (Ctrl+V)");
+                activated => { paste_image(); }
+            }
+            MenuItem {
+                title: @tr("Change (Ctrl+X)");
+                activated => { change_image(); }
+            }
+            MenuItem {
+                title: @tr("Change View (Ctrl+Shift+X)");
+                activated => { change_view(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("About");
+                activated => {  }
+            }
+            MenuItem {
+                title: @tr("Exit (Esc)");
+                activated => { exit(); }
+            }
+        }
+        Menu {
+            title: @tr("Option");
+            MenuItem {
+                title: @tr("Info (I)");
+                activated => { info_clicked(); }
+            }
+            MenuItem {
+                title: @tr("Color Setting (C)");
+                activated => { color_setting(); }
+            }
+            Menu {
+                title: @tr("Change Background (D)");
+                MenuItem {
+                    title: "White";
+                    activated => { change_background(0); }
+                }
+                MenuItem {
+                    title: "Gray";
+                    activated => { change_background(1); }
+                }
+                MenuItem {
+                    title: "Black";
+                    activated => { change_background(2); }
+                }
+                MenuItem {
+                    title: "Green";
+                    activated => { change_background(3); }
+                }
+                MenuItem {
+                    title: "Dark&Gray";
+                    activated => { change_background(4); }
+                }
+                MenuItem {
+                    title: "Green&Magenta";
+                    activated => { change_background(5); }
+                }
+                MenuItem {
+                    title: "Black&Brown";
+                    activated => { change_background(6); }
+                }
+            }
+            Menu {
+                title: @tr("Rotate");
+                MenuItem {
+                    title: "⇅ Up (↑)";
+                    activated => { up(); }
+                }
+                MenuItem {
+                    title: "↻ Right (→)";
+                    activated => { right(); }
+                }
+                MenuItem {
+                    title: "↺ Left (←)";
+                    activated => { left(); }
+                }
+                MenuItem {
+                    title: "↥ Stand (↓)";
+                    activated => { down(); }
+                }
+            }
+            Menu {
+                title: @tr("Channels hide/show");
+                MenuItem {
+                    title: "Red (Ctrl+R)";
+                    activated => { red_channel(); }
+                }
+                MenuItem {
+                    title: "Green (Ctrl+G)";
+                    activated => { green_channel(); }
+                }
+                MenuItem {
+                    title: "Blue (Ctrl+B)";
+                    activated => { blue_channel(); }
+                }
+                MenuItem {
+                    title: "Invert (Ctrl+I)";
+                    activated => { invert_channels(); }
+                }
+            }
+            MenuSeparator {}
+            Menu {
+                title: @tr("Zoom");
+                MenuItem {
+                    title: @tr("Fit (F)");
+                    activated => { zoom(-1.0); }
+                }
+                MenuItem {
+                    title: @tr("1:1 (1)");
+                    activated => { zoom(1.0); }
+                }
+                MenuItem {
+                    title: @tr("[0.5] (2)");
+                    activated => { zoom(0.5); }
+                }
+                MenuItem {
+                    title: @tr("[0.45] (3)");
+                    activated => { zoom(0.45); }
+                }
+                MenuItem {
+                    title: @tr("[0.4] (4)");
+                    activated => { zoom(0.4); }
+                }
+                MenuItem {
+                    title: @tr("[0.35] (5)");
+                    activated => { zoom(0.35); }
+                }
+                MenuItem {
+                    title: @tr("[0.3] (6)");
+                    activated => { zoom(0.3); }
+                }
+                MenuItem {
+                    title: @tr("[0.25] (7)");
+                    activated => { zoom(0.25); }
+                }
+                MenuItem {
+                    title: @tr("[0.2] (8)");
+                    activated => { zoom(0.2); }
+                }
+                MenuItem {
+                    title: @tr("[0.15] (9)");
+                    activated => { zoom(0.15); }
+                }
+                MenuItem {
+                    title: @tr("[0.1] (0)");
+                    activated => { zoom(0.1); }
+                }
+                MenuItem {
+                    title: @tr("[2.0] (Ctrl+2)");
+                    activated => { zoom(2.0); }
+                }
+                MenuItem {
+                    title: @tr("[3.0] (Ctrl+3)");
+                    activated => { zoom(3.0); }
+                }
+                MenuItem {
+                    title: @tr("[4.0] (Ctrl+4)");
+                    activated => { zoom(4.0); }
+                }
+                MenuItem {
+                    title: @tr("[5.0] (Ctrl+5)");
+                    activated => { zoom(5.0); }
+                }
+                MenuItem {
+                    title: @tr("[6.0] (Ctrl+6)");
+                    activated => { zoom(6.0); }
+                }
+                MenuItem {
+                    title: @tr("[7.0] (Ctrl+7)");
+                    activated => { zoom(7.0); }
+                }
+                MenuItem {
+                    title: @tr("[8.0] (Ctrl+8)");
+                    activated => { zoom(8.0); }
+                }
+                MenuItem {
+                    title: @tr("[9.0] (Ctrl+9)");
+                    activated => { zoom(9.0); }
+                }
+            }
+        }
+        Menu {
+            title: "Browse";
+            MenuItem {
+                activated => { prev_image(); }
+                title: "<< (B)";
+            }
+            MenuItem {
+                title: @tr(">> (N)");
+                activated => { next_image(); }
+            }
+        }
+        Menu {
+            title: @tr("Animation");
+            MenuItem {
+                title: @tr("▶ Play/⏸ Stop");
+                activated => { play_animation(); }
+            }
+            MenuItem {
+                title: @tr("⏮ ⏪Begin");
+                activated => { begin_animation(); }
+            }
+            MenuItem {
+                title: @tr("◀ Back");
+                activated => { back_animation(); }
+            }
+            MenuItem {
+                title: @tr("▶ Forward");
+                activated => { forward_animation(); }
+            }
+            MenuItem {
+                title: @tr("🔁 Loop");
+                activated => { loop_animation(); }
+            }
+        }
+    }
+
+
+    // image
     VerticalBox {
         padding: 0px;
         spacing: 0px;
-        
-        Rectangle {
-            height: 20px;
-            background: #252525;
-
-            HorizontalBox {
-                padding_left: 2px; padding_right: 2px;
-                padding_top: 0px; padding_bottom: 0px;
-                spacing: 2px;
-                alignment: start;
-
-                file_btn := MenuItem {
-                    text: "File";
-                    is_top_level: true;
-                    click => {
-                        //root.title = "File Katt!";
-                        root.file_menu_visible = !root.file_menu_visible;
-                        root.options_menu_visible = false;
-                        root.menu_active = root.file_menu_visible;
-                    }
-                    moved(event) => {
-                        if (event.kind == PointerEventKind.move && root.menu_active) {
-                            root.file_menu_visible = true;
-                            root.options_menu_visible = false;
-                        }
-                    }
-                }
-
-                opt_btn := MenuItem {
-                    text: "Options";
-                    is_top_level: true;
-                    click => {
-                        //root.title = "Option Katt!"; 
-                        root.options_menu_visible = !root.options_menu_visible;
-                        root.file_menu_visible = false;
-                        root.menu_active = root.options_menu_visible;
-                    }
-                    moved(event) => {
-                        if (event.kind == PointerEventKind.move && root.menu_active) {
-                            root.options_menu_visible = true;
-                            root.file_menu_visible = false;
-                        }
-                    }
-                }
-
-                // Elválasztó
-                Rectangle { width: 2px; background: #444; height: 20px; }
-                
-                // Léptető Gombok
-                MenuItem { text: "<< B"; is_top_level: true; click => {
-                    //root.title = "<< Katt!";
-                    close_menu(); root.prev_image() } width: 60px; }
-
-                MenuItem { text: ">> N"; is_top_level: true; click => {
-                    //root.title = ">> Katt!";
-                    close_menu(); root.next_image() } width: 60px; }
-
-                // Animáció vezérlő
-                MenuItem { text: "▶ Play"; is_top_level: true; click => {
-                    //root.title = "Play Katt!";
-                    close_menu(); root.play_animation() }  width: 80px; }
-            }
-        }
 
         Rectangle {
             clip: true; // Ha a kép nagyobb, ne lógjon ki
-            background: #121212;
 
             Flickable {
                 viewport-width: img.source.width * root.zoom_level * 1px;
@@ -122,191 +333,9 @@ export component MainWindow inherits Window {
                     image-fit: contain;
                 }
             }
-            
-            if (root.menu_active || root.show_recent_sidebar) : TouchArea {clicked => {
-                close_menu();
-                close_recent();
-            } }
         }
 
     }
-
-    // File submenu
-    if (root.file_menu_visible) :
-        Rectangle {
-            x: file_btn.absolute-position.x;
-            y: 20px; // A menüsor magassága
-            width: 180px;
-            height: file_col.preferred-height;
-            background: #2d2d2d;
-            border-width: 1px; border-color: #444;
-            
-            file_col := VerticalBox {
-                padding: 2px; spacing: 2px;
-                MenuItem { text: "Open ... (O)"; click => { close_menu(); root.open_file(); } }
-                MenuItem { text: "Reopen (R)"; click => { close_menu(); root.reopen_file(); } }
-                MenuItem { text: "Save ... (S)"; click => { close_menu(); root.save_file(); } }
-                MenuItem { text: "Save View ... (Shift+S)"; click => { close_menu(); root.save_file(); } }
-                MenuItem { text: "Recent Paths (P)"; click => { close_menu(); change_recent(); } }
-                Rectangle { height: 2px; background: #444; } // Elválasztó vonal
-                MenuItem { text: "Copy (Ctrl+C)"; click => { close_menu(); root.copy_image(); } }
-                MenuItem { text: "Copy View (Ctrl+Shift+C)"; click => { close_menu(); root.copy_view(); } }
-                MenuItem { text: "Past (Ctrl+V)"; click => { close_menu(); root.paste_image(); } }
-                MenuItem { text: "Change (Ctrl+X)"; click => { close_menu(); root.change_image(); } }
-                MenuItem { text: "Change View (Ctrl+Shift+X)"; click => { close_menu(); root.change_view(); } }
-                Rectangle { height: 2px; background: #444; } // Elválasztó vonal
-                MenuItem { text: "About (A)"; click => { close_menu(); root.about(); } }
-                MenuItem { text: "Exit"; click => { close_menu(); root.exit(); } }
-            }
-        }
-
-    // Options submenu
-    if (root.options_menu_visible) :
-        Rectangle {
-            x: opt_btn.absolute-position.x;
-            y: 20px;
-            width: 150px;
-            height: opt_col.preferred-height;
-            background: #2d2d2d;
-            border-width: 1px; border_color: #444;
-
-            opt_col := VerticalBox {
-                padding: 2px; spacing: 2px;
-                MenuItem { text: "Info (I)"; click => { close_menu(); root.info_clicked(); } }
-                MenuItem { text: "Color Setting (C)"; click => { close_menu(); root.color_setting(); } }
-                MenuItem { text: "Change Background (D)"; click => { close_menu(); root.change_background(); } }
-            }
-        }
-
-    // recent file list
-    if (root.show_recent_sidebar && root.recent_files_data.length > 0) : Rectangle {
-        x: 0px;
-        y: 20px;
-        width: 200px;
-        height: content.preferred-height;
-        //height: parent.height - 20px;
-        background: #252525;
-        Rectangle { x: 2px; width: 2px; height: 100%; background: #444; }
-
-        Flickable {
-            viewport_height: content.preferred_height;
-
-            content := VerticalBox {
-
-                padding: 2px; spacing: 2px;
-                alignment: start;
-
-                Text { text: "Recent Paths (P)"; font_size: 12px; color: #aaa; }
-
-                for data[i] in root.recent_files_data : Rectangle {
-                    height: 20px;
-                    width: 100%; // Kényszerítsük, hogy töltse ki a sávot
-                    animate height { duration: 150ms; }
-                    background: #333;
-                    border_radius: 2px;
-
-                    VerticalBox {
-                        padding: 2px;
-                        Rectangle {
-                            height: 16px;
-                            background: root.selected_recent_index >= 0 ? #444 : #333;
-                            Text { text: data.filename; font_size: 12px; color: white; x: 0; }
-                            but := TouchArea {
-                                mouse_cursor: pointer;
-                                clicked => {
-                                    root.selected_recent_index = i;
-                                    root.selected_recent_path = data.path;
-                                }
-
-                                pointer-event(event) => {
-                                    if (event.kind == PointerEventKind.move) {
-                                        root.hover_x = parent.x + 5px;
-                                        root.hover_y = parent.y - 5px;
-                                        root.hover_path = data.path;
-                                        root.show_hover = true;
-                                    }
-                                    else if ( event.kind == PointerEventKind.cancel) {
-                                        root.show_hover = false;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // menu for selected recent file
-    if (root.selected_recent_index >= 0) : Rectangle {
-        x: root.hover_x;
-        y: root.hover_y; 
-        width: label.preferred-width + 10px;
-        height: 20px;
-        background: #555;
-        border-radius: 2px;
-        //Text { text: root.selected_recent_path; color: white; }
-        label := HorizontalBox {
-            padding: 0;
-            spacing: 2px;
-            for btn_txt in ["Open", "Open Here", "Save", "Save Here"] : Rectangle {
-                width: label1.preferred-width + 12px;
-                background: btn_ta.has_hover ? #555 : #444;
-                border_radius: 2px;
-                label1 := Text { text: btn_txt; font_size: 12px; color: #ccc; vertical_alignment: center; horizontal_alignment: center; }
-                btn_ta := TouchArea {
-                    clicked => {
-                        if (btn_txt == "Open") { root.open_recent(root.selected_recent_path); }
-                        if (btn_txt == "Open Here") { root.open_here_recent(root.selected_recent_path); }
-                        if (btn_txt == "Save") { root.save_recent(root.selected_recent_path); }
-                        if (btn_txt == "Save Here") { root.save_here_recent(root.selected_recent_path); }
-                    }
-                }
-            }
-        }
-    }
-
-    // tooltip of selected recent file
-    if (root.show_hover) : Rectangle {
-        x: root.hover_x;
-        y: root.hover_y; 
-        width: label2.preferred-width + 10px;
-        height: 20px;
-        background: #555;
-        border-radius: 2px;
-        label2 := Text { text: root.hover_path; color: white; }
-    }
-
-
-
-    function close_recent() {
-        root.show_hover = false;
-        root.selected_recent_index = -1;
-        root.show_recent_sidebar = false;
-    }
-    function change_recent() {
-        if( show_recent_sidebar ) { close_recent(); }
-        else { root.show_recent_sidebar = true; }
-    }
-    function close_menu() {
-        root.file_menu_visible = false;
-        root.options_menu_visible = false;
-        root.menu_active = false;
-    }
-
-
-
-    // A popupok pozícióját globális property-kben tároljuk, mert a popup belsejébe nem látunk be
-    property <bool> file_menu_visible: false;
-    property <bool> options_menu_visible: false;
-    property <bool> menu_active: false;
-    property <bool> show_recent_sidebar: false;
-    property <bool> show_hover: false;
-    property <int> selected_recent_index: -1;
-    property <string> hover_path;
-    property <string> selected_recent_path;
-    property <length> hover_x: 0;
-    property <length> hover_y: 0;
 
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
     in-out property <image> pasted_image;
@@ -314,15 +343,16 @@ export component MainWindow inherits Window {
     in-out property <float> zoom_level: 1.0;
     in_out property <length> offset_x: 0px;
     in_out property <length> offset_y: 0px;
-    //in property <[{path: string, filename: string}]> recent_files_data;
+    in_out property <length> screen_width: 800px;
+    in_out property <length> screen_height: 600px;
     in property <[RecentFileSlint]> recent_files_data;
-    
     
     callback open_recent(string);
     callback open_here_recent(string);
     callback save_recent(string);
-    callback save_here_recent(string);
-    callback change_background();
+    callback save_view_recent(string);
+    callback change_background(int);
+    callback zoom(float);
     callback up();
     callback down();
     callback left();
@@ -338,21 +368,21 @@ export component MainWindow inherits Window {
     callback reopen_file();
     callback save_file();
     callback save_view();
-    //callback recent_paths();
     callback copy_image();
     callback copy_view();
     callback paste_image();
     callback change_image();
     callback change_view();
-    callback about();
+    //callback about();
     callback prev_image();
     callback next_image();
     callback play_animation();
+    callback begin_animation();
+    callback back_animation();
+    callback forward_animation();
+    callback loop_animation();
     callback info_clicked();
     callback exit();
-    // Callback-ek a popupok kezeléséhez
-    callback show_file_menu(length, length);
-    callback show_options_menu(length, length);
 
 
     forward_focus: key_handler;
@@ -374,9 +404,19 @@ export component MainWindow inherits Window {
                         if (event.text == "g") { root.green_channel(); return accept;}
                         if (event.text == "b") { root.blue_channel(); return accept;}
                         if (event.text == "i") { root.invert_channels(); return accept;}
-                        if (event.text == Key.UpArrow) { root.up(); return accept;}
-                        if (event.text == Key.DownArrow) { root.down(); return accept;}
-                        if (event.text == Key.LeftArrow) { root.left(); return accept;}
+                        if (event.text == "1") { root.zoom(1.0); return accept; }
+                        if (event.text == "2") { root.zoom(2.0); return accept; }
+                        if (event.text == "3") { root.zoom(3.0); return accept; }
+                        if (event.text == "4") { root.zoom(4.0); return accept; }
+                        if (event.text == "5") { root.zoom(5.0); return accept; }
+                        if (event.text == "6") { root.zoom(6.0); return accept; }
+                        if (event.text == "7") { root.zoom(7.0); return accept; }
+                        if (event.text == "8") { root.zoom(8.0); return accept; }
+                        if (event.text == "9") { root.zoom(9.0); return accept; }
+                        if (event.text == "0") { root.zoom(10.0); return accept; }
+                        if (event.text == Key.UpArrow)    { root.up(); return accept;}
+                        if (event.text == Key.DownArrow)  { root.down(); return accept;}
+                        if (event.text == Key.LeftArrow)  { root.left(); return accept;}
                         if (event.text == Key.RightArrow) { root.right(); return accept;}
                     }
                 }
@@ -390,11 +430,22 @@ export component MainWindow inherits Window {
                         if (event.text == "o") { root.open_file(); return accept; }
                         if (event.text == "r") { root.reopen_file(); return accept; }
                         if (event.text == "s") { root.save_file(); return accept; }
-                        if (event.text == "p") { change_recent(); return accept; }
-                        if (event.text == "a") { root.about(); return accept; }
-                        if (event.text == "d") { root.change_background(); return accept; }
+                        //if (event.text == "p") { change_recent(); return accept; }
+                        //if (event.text == "a") { root.AboutIView(); return accept; }
+                        if (event.text == "d") { root.change_background(-1); return accept; }
                         if (event.text == "+") { root.plus(); return accept; }
                         if (event.text == "-") { root.minus(); return accept; }
+                        if (event.text == "1") { root.zoom(1.0); return accept; }
+                        if (event.text == "2") { root.zoom(0.5); return accept; }
+                        if (event.text == "3") { root.zoom(0.45); return accept; }
+                        if (event.text == "4") { root.zoom(0.4); return accept; }
+                        if (event.text == "4") { root.zoom(0.35); return accept; }
+                        if (event.text == "5") { root.zoom(0.3); return accept; }
+                        if (event.text == "7") { root.zoom(0.25); return accept; }
+                        if (event.text == "8") { root.zoom(0.2); return accept; }
+                        if (event.text == "9") { root.zoom(0.15); return accept; }
+                        if (event.text == "0") { root.zoom(0.1); return accept; }
+                        if (event.text == Key.Escape) { root.exit(); return accept; }
                     }
                 }
             }

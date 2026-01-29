@@ -3,6 +3,7 @@ use crate::image_processing::*;
 use crate::colors::*;
 //use crate::gpu_colors::*;
 
+use slint::{Window, PhysicalSize};
 use slint::ComponentHandle;
 //use slint::*;
 use std::rc::Rc;
@@ -10,12 +11,16 @@ use std::cell::RefCell;
 use crate::ImageViewer;
 use std::env;
 use std::path::PathBuf;
+use display_info::DisplayInfo;
 
 pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageViewer>>) {
     let ui = ui_weak.unwrap();    
     let state_copy = state.clone();
     
     { // startup setting
+        
+        let display_info = DisplayInfo::all().unwrap()[0].clone();
+       
         let args: Vec<String> = env::args().collect();
         let (start_image, clipboard) = if args.len() > 1 {
             // Ha van argumentum, azt útvonalként kezeljük
@@ -26,6 +31,15 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         };
         
         let mut viewer = state_copy.borrow_mut();
+        viewer.screen_size = (display_info.width as f32, display_info.height as f32);
+        
+        let w = ui.get_screen_width();
+        let h = ui.get_screen_height();
+        let pos_x = (viewer.screen_size.0 - w) / 2.0;
+        let pos_y = (viewer.screen_size.1 - h) / 2.0;
+
+        ui.window().set_position(slint::PhysicalPosition::new(pos_x as i32, pos_y as i32));
+        println!("{:?}",display_info);
         viewer.load_settings();
         
         if let Some(path) = start_image {
@@ -45,7 +59,7 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
 
         viewer.refresh_recent_list();
         let rec = &viewer.config.recent_files;
-        println!("{:?}",rec);
+        println!("{:?}",viewer.screen_size);
     }
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -160,9 +174,9 @@ ui.set_zoom_level(final_zoom);
     });
     
     let value = state_copy.clone();
-    ui.on_save_here_recent(move |path| {
+    ui.on_save_view_recent(move |path| {
         let path_buf = PathBuf::from(path.as_str());
-        println!("on_save_here_recent {:?}", path_buf);
+        println!("on_save_view_recent {:?}", path_buf);
         let mut viewer = value.borrow_mut();
         viewer.save_original = false;
         viewer.starting_save(&Some(path_buf));
@@ -226,10 +240,11 @@ ui.set_zoom_level(final_zoom);
     });
 
     let value = state_copy.clone();
-    ui.on_change_background(move || {
+    ui.on_change_background(move |mode| {
         println!("on_change_background");
         let mut viewer = value.borrow_mut();
-        viewer.bg_style = viewer.bg_style.clone().inc();
+        let bkgrd = if mode >= 0 { BackgroundStyle::from(mode) } else { viewer.bg_style.clone().inc() };
+        viewer.bg_style = bkgrd;
     });
 
     let value = state_copy.clone();
@@ -325,10 +340,10 @@ ui.set_zoom_level(final_zoom);
     });
 
     //let value = state_copy.clone();
-    ui.on_about(move || {
-        println!("on_about");
-        //let mut viewer = value.borrow_mut();
-    });
+    //ui.on_about(move || {
+    //    println!("on_about");
+    //    //let mut viewer = value.borrow_mut();
+    //});
     
     ui.on_exit(move || {
         println!("exit");
@@ -338,15 +353,25 @@ ui.set_zoom_level(final_zoom);
     });
     
     // Példa Timer indítására a Play gombra
-    let timer = slint::Timer::default();
+    //let timer = slint::Timer::default();
     //let value = state_copy.clone();
     ui.on_play_animation(move || {
         println!("Play/Stop");
         //let mut viewer = value.borrow_mut();
-        timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
+        //timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
             // Következő képkocka betöltése...
-        });
     });
-    
+    ui.on_begin_animation(move || {
+        println!("on_begin_animation");
+    });
+    ui.on_back_animation(move || {
+        println!("on_back_animation");
+    });
+    ui.on_forward_animation(move || {
+        println!("on_forward_animation");
+    });
+    ui.on_loop_animation(move || {
+        println!("on_loop_animation");
+    });
 }
 
