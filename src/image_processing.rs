@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use std::env;
 use crate::ImageViewer;
 use crate::colors::*;
-use slint::Color;
-//use image::math::Rect;
+use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel};
+use crate::Pf32;
+use image::math::Rect;
 
 // Segédfüggvény a vágólapon lévő kép kimentéséhez egy ideiglenes fájlba
 pub fn save_clipboard_image() -> Option<PathBuf> {
@@ -94,7 +95,7 @@ pub struct AnimatedImage {
 }*/
 
 pub fn draw_custom_background(bg_style: &BackgroundStyle) {
-    /*let rect = Rect::new(); // TODO !!!! ui.max_rect(); // A terület, ahová a kép kerülne
+    let rect = Rect::new(); // TODO !!!! ui.max_rect(); // A terület, ahová a kép kerülne
     if rect.width() <= 0.0 {
         return;
     }
@@ -151,7 +152,7 @@ pub fn draw_custom_background(bg_style: &BackgroundStyle) {
                 }
             }
         }
-    }*/
+    }
 }
 
 impl ImageViewer {
@@ -194,39 +195,137 @@ impl ImageViewer {
             _ => {}
         }
         if new_rotate {
-            self.first_appear = 1;
+            self.want_magnify = -1.0; // modified image width:height ratio
         }
 
         let mut rgba_image = img.to_rgba8();
-        self.image_size.0 = rgba_image.dimensions().0 as f32;
-        self.image_size.1 = rgba_image.dimensions().1 as f32;
+        let (width, height) = rgba_image.dimensions();
+        self.image_size = ( width, height ).into();
         
         if let Some(interface) = &self.gpu_interface {
             interface.change_colorcorrection(
                 if self.show_original_only { &default_settings } else { &self.color_settings },
-                self.image_size.0,
-                self.image_size.1);
+                self.image_size.x,
+                self.image_size.y);
         }
 
-        self.resize = self.image_size.0 / w_orig as f32;
+        self.resize = self.image_size.x / w_orig as f32;
         
         if self.color_settings.is_setted() || self.color_settings.is_blured() {
             if self.gpu_interface.is_some() {
-                let (width, height) = rgba_image.dimensions();
+                
                 self.gpu_interface.as_ref().unwrap().generate_image(rgba_image.as_mut(), width, height);
                             } else if let Some(lut) = &self.lut {
                 lut.apply_lut(&mut rgba_image); 
             }
         }
 
-        self.rgba_image = Some(rgba_image.clone());
-        let pixel_data = rgba_image.into_raw();
+        self.sizing_window();
+
+        let slint_pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
+            rgba_image.as_raw(), 
+            width, 
+            height
+        );
+        let slint_img = Image::from_rgba8(slint_pixel_buffer);
+        if let Some(handle) = &self.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                 ui.set_current_image(slint_img);
+            }
+        }
+
+        //self.rgba_image = Some(rgba_image.clone());
+        //let pixel_data = rgba_image.into_raw();
         //let color_image = egui::ColorImage::from_rgba_unmultiplied(
         //    [self.image_size.0 as usize, self.image_size.1 as usize],
         //    &pixel_data,
         //);
         // TODO !!!!
         //self.texture = Some(ctx.load_texture("kep", color_image, Default::default()));
+    }
+
+    fn sizing_window(&mut self){
+        /*let mut in_w;
+        let mut in_h;
+        let old_size = self.image_size * self.magnify;
+        if self.want_magnify == -1.0 { // set size to fit
+            self.frame = ( 10.0 , 60 ); // title, menu, padding, rendszer tálca
+            self.display_size_netto = self.screen_size - self.frame;
+            let ratio = (self.display_size_netto) / self.image_size;
+            self.magnify = ratio.x.min(ratio.y);
+
+            if let Some(_) = &self.texture {
+            } else {
+                self.magnify /= 2.0;
+            }
+
+            let round_ = if self.magnify < 1.0 { 0.0 } else { 0.5 };
+            self.magnify = (((self.magnify * 20.0 + round_) as i32) as f32) / 20.0; // round
+            in_w = (self.image_size.x * self.magnify).min(self.display_size_netto.x);
+            in_h = (self.image_size.y * self.magnify).min(self.display_size_netto.y);
+            let inner_size = egui::Vec2 {
+                x: in_w + 4.0,
+                y: in_h + 26.0,
+            };
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(inner_size));
+            let pos = if self.center {
+                egui::pos2(
+                    (self.display_size_netto.x - in_w) / 2.0 - 8.0,
+                    (self.display_size_netto.y - in_h) / 2.0 - 10.0,
+                )
+            } else {
+                egui::pos2(-8.0, 0.0)
+            };
+            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(pos));
+            //println!("inner:{:?} pos:{:?} magn: {:?}", inner_size, pos, self.magnify);
+        }
+
+        let mut zoom = 1.0;
+        if *change_magnify != 0.0 {
+            let regi_nagyitas = self.magnify;
+            if self.magnify >= 1.0 {
+                *change_magnify *= 2.0;
+            }
+            if self.magnify >= 4.0 {
+                *change_magnify *= 2.0;
+            }
+            self.magnify = (regi_nagyitas * 1.0 + (0.05 * *change_magnify)).clamp(0.1, 10.0);
+            self.magnify = (((self.magnify * 100.0 + 0.5) as i32) as f32) / 100.0; // round
+
+            if self.magnify != regi_nagyitas {
+                zoom = self.magnify / regi_nagyitas;
+                in_w = (self.image_size.x * self.magnify).min(self.display_size_netto.x);
+                in_h = (self.image_size.y * self.magnify).min(self.display_size_netto.y);
+                let inner_size = egui::Vec2 {
+                    x: in_w + 4.0,
+                    y: in_h + 26.0,
+                };
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(inner_size));
+                let pos = if self.center {
+                    egui::pos2(
+                        (self.display_size_netto.x - in_w) / 2.0,
+                        (self.display_size_netto.y - in_h) / 2.0,
+                    )
+                } else {
+                    egui::pos2(0.0, 0.0)
+                };
+                ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(pos));
+                //println!("inner:{:?} pos:{:?} magn: {:?}", inner_size, pos, self.magnify);
+            }
+        }*/
+        
+        /* beállítandók
+            in-out property <image> current_image;
+            in-out property <float> zoom_level: 1.0;
+            in_out property <length> offset_x: 0px;
+            in_out property <length> offset_y: 0px;
+            in_out property <length> screen_width: 800px;
+            in_out property <length> screen_height: 600px;
+        viewer.window_size = ( ui.get_screen_width(), ui.get_screen_height());
+        let pos_x = (viewer.display_size.0 - viewer.window_size.0) / 2.0;
+        let pos_y = (viewer.display_size.1 - viewer.window_size.y) / 2.0;
+        ui.window().set_position(slint::PhysicalPosition::new(pos_x as i32, pos_y as i32));
+        */
     }
 
     pub fn pick_color(&self, pixel_x : u32,pixel_y: u32) -> Option<Color> {

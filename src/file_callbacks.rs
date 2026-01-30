@@ -1,9 +1,9 @@
 use crate::MainWindow; // A build.rs által generált típus
+use crate::Pf32;
 use crate::image_processing::*;
 use crate::colors::*;
 //use crate::gpu_colors::*;
 
-use slint::{Window, PhysicalSize};
 use slint::ComponentHandle;
 //use slint::*;
 use std::rc::Rc;
@@ -31,14 +31,11 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         };
         
         let mut viewer = state_copy.borrow_mut();
-        viewer.screen_size = (display_info.width as f32, display_info.height as f32);
+        viewer.display_size = (display_info.width as f32, display_info.height as f32).into();
+        viewer.window_size = ( ui.get_screen_width(), ui.get_screen_height()).into();
+        let pos = (viewer.display_size - viewer.window_size) * 0.5;
+        ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
         
-        let w = ui.get_screen_width();
-        let h = ui.get_screen_height();
-        let pos_x = (viewer.screen_size.0 - w) / 2.0;
-        let pos_y = (viewer.screen_size.1 - h) / 2.0;
-
-        ui.window().set_position(slint::PhysicalPosition::new(pos_x as i32, pos_y as i32));
         println!("{:?}",display_info);
         viewer.load_settings();
         
@@ -59,48 +56,10 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
 
         viewer.refresh_recent_list();
         let rec = &viewer.config.recent_files;
-        println!("{:?}",viewer.screen_size);
+        println!("{:?}",viewer.display_size);
     }
-    let value = state_copy.clone();
-    ui.on_copy_image(move || {
-        println!("Copy");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = true;
-        viewer.copy_to_clipboard();
-    });
-
-    let value = state_copy.clone();
-    ui.on_copy_view(move || {
-        println!("Copy View");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = false;
-        viewer.copy_to_clipboard();
-    });
-
-    let value = state_copy.clone();
-    ui.on_paste_image( move || {
-        println!("Paste");
-        let mut viewer = value.borrow_mut();
-        viewer.copy_from_clipboard();
-        // TODO show image
-    });
-
-    let value = state_copy.clone();
-    ui.on_save_file(move || {
-        println!("Save");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = true;
-        viewer.starting_save(&None);
-    });
-
-    let value = state_copy.clone();
-    ui.on_save_view( move || {
-        println!("Save View");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = false;
-        viewer.starting_save(&None);
-    });
-
+    
+    
     /*let slint_img = ui.get_current_image(); // Ez kéri le a képet a GUI-ból
 
     if let Some(pixel_buffer) = slint_img.to_rgba8() {
@@ -149,194 +108,148 @@ ui.set_zoom_level(final_zoom);
 */
 
     let value = state_copy.clone();
+    ui.on_copy_image(move || {
+        on_copy_image(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
+    ui.on_copy_view(move || {
+        on_copy_view(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
+    ui.on_paste_image( move || {
+        on_paste_image(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
+    ui.on_save_file(move || {
+        on_save_file(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
+    ui.on_save_view( move || {
+        on_save_view(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
     ui.on_open_recent(move |path| {
-        let path_buf = PathBuf::from(path.as_str());
-        println!("on_open_recent {:?}", path_buf);
-        let mut viewer = value.borrow_mut();
-        viewer.open_image(&path_buf,true);
+        on_open_recent(&mut value.borrow_mut(), PathBuf::from(path.to_string()));
     });
     
     let value = state_copy.clone();
     ui.on_open_here_recent(move |path| {
-        let path_buf = PathBuf::from(path.as_str());
-        println!("on_open_here_recent {:?}", path_buf);
-        let mut viewer = value.borrow_mut();
-        viewer.open_image_dialog(&Some(path_buf));
+        on_open_here_recent(&mut value.borrow_mut(), PathBuf::from(path.to_string()));
     });
     
     let value = state_copy.clone();
     ui.on_save_recent(move |path| {
-        let path_buf = PathBuf::from(path.as_str());
-        println!("on_save_recent {:?}", path_buf);
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = true;
-        viewer.starting_save(&Some(path_buf));
+        on_save_recent(&mut value.borrow_mut(), PathBuf::from(path.to_string()));
     });
     
     let value = state_copy.clone();
     ui.on_save_view_recent(move |path| {
-        let path_buf = PathBuf::from(path.as_str());
-        println!("on_save_view_recent {:?}", path_buf);
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = false;
-        viewer.starting_save(&Some(path_buf));
+        on_save_view_recent(&mut value.borrow_mut(), PathBuf::from(path.to_string()));
     });
     
     let value = state_copy.clone();
     ui.on_open_file(move || {
-        println!("Open");
-        let mut viewer = value.borrow_mut();
-        viewer.open_image_dialog(&None);
+        on_open_file(&mut value.borrow_mut());
     });
     
     let value = state_copy.clone();
     ui.on_change_image(move || {
-        println!("Change");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = true;
-        viewer.change_with_clipboard();
+        on_change_image(&mut value.borrow_mut());
     });
     
     let value = state_copy.clone();
     ui.on_change_view(move || {
-        println!("Change View");
-        let mut viewer = value.borrow_mut();
-        viewer.save_original = false;
-        viewer.change_with_clipboard();
+        on_change_view(&mut value.borrow_mut());
     });
     
     let value = state_copy.clone();
     ui.on_reopen_file(move || {
-        println!("Reopen");
-        let mut viewer = value.borrow_mut();
-        viewer.load_image(true);
+        on_reopen_file(&mut value.borrow_mut());
     });
-    
-    //let value = state_copy.clone();
-    /*ui.on_recent_paths(move || {
-        println!("Recent paths");
-        //let mut viewer = value.borrow_mut();
-        // TODO !!!! viewer.show_recent_window = !self.show_recent_window && !self.config.recent_files.is_empty();
-    });*/
     
     let value = state_copy.clone();
     ui.on_prev_image(move || {
-        println!("Előző kép (Back)");
-        let mut viewer = value.borrow_mut();
-        viewer.navigation(-1);
+        on_prev_image(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_next_image(move || {
-        println!("Következő kép (Next)");
-        let mut viewer = value.borrow_mut();
-        viewer.navigation(1);
+        on_next_image(&mut value.borrow_mut());
     });
     
-    //let value = state_copy.clone();
+    let value = state_copy.clone();
     ui.on_info_clicked(move || {
-        println!("Info");
-        //let mut viewer = value.borrow_mut();
+        on_info_clicked(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_change_background(move |mode| {
-        println!("on_change_background");
-        let mut viewer = value.borrow_mut();
-        let bkgrd = if mode >= 0 { BackgroundStyle::from(mode) } else { viewer.bg_style.clone().inc() };
-        viewer.bg_style = bkgrd;
+        on_change_background(&mut value.borrow_mut(), mode);
     });
 
     let value = state_copy.clone();
     ui.on_down(move || {
-        println!("on_down");
-        let mut viewer = value.borrow_mut();
-        // rotate  to 0
-        let r = viewer.color_settings.rotate == Rotate::Rotate90
-            || viewer.color_settings.rotate == Rotate::Rotate270;
-        viewer.color_settings.rotate = Rotate::Rotate0;
-        viewer.review(true, r);
+        on_down(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_up(move || {
-        println!("on_up");
-        let mut viewer = value.borrow_mut();
-        // rotate 180
-        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate180);
-        viewer.review(true, false);
+        on_up(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_left(move || {
-        println!("on_left");
-        let mut viewer = value.borrow_mut();
-        // rotate -90
-        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate270);
-        viewer.review(true, true);
+        on_left(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_right(move || {
-        println!("on_right");
-        let mut viewer = value.borrow_mut();
-        // rotate 90
-        viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate90);
-        viewer.review(true, true);
+        on_right(&mut value.borrow_mut());
+    });
+
+    let value = state_copy.clone();
+    ui.on_zoom(move |mag| {
+        on_zoom(&mut value.borrow_mut(), mag);
     });
 
     let value = state_copy.clone();
     ui.on_plus(move || {
-        println!("on_plus");
-        let mut viewer = value.borrow_mut();
-        viewer.change_magnify = 1.0;
-
+        on_plus(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_minus(move || {
-        println!("on_minus");
-        let mut viewer = value.borrow_mut();
-        viewer.change_magnify = -1.0;
+        on_minus(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_red_channel(move || {
-        println!("on_red_channel");
-        let mut viewer = value.borrow_mut();
-        viewer.color_settings.show_r = !viewer.color_settings.show_r;
-        viewer.review(true, false);
+        on_red_channel(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_green_channel(move || {
-        println!("on_green_channel");
-        let mut viewer = value.borrow_mut();
-        viewer.color_settings.show_g = !viewer.color_settings.show_g;
-        viewer.review(true, false);
+        on_green_channel(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_blue_channel(move || {
-        println!("on_blue_channel");
-        let mut viewer = value.borrow_mut();
-        viewer.color_settings.show_b = !viewer.color_settings.show_b;
-        viewer.review(true, false);
+        on_blue_channel(&mut value.borrow_mut());
     });
 
     let value = state_copy.clone();
     ui.on_invert_channels(move || {
-        println!("on_invert_channels");
-        let mut viewer = value.borrow_mut();
-        viewer.color_settings.invert = !viewer.color_settings.invert;
-        viewer.review(true, false);
+        on_invert_channels(&mut value.borrow_mut());
     });
 
-    //let value = state_copy.clone();
+    let value = state_copy.clone();
     ui.on_color_setting(move || {
-        println!("on_color_setting");
-        //let mut viewer = value.borrow_mut();
-        // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
+        on_color_setting(&mut value.borrow_mut());
     });
 
     //let value = state_copy.clone();
@@ -345,33 +258,318 @@ ui.set_zoom_level(final_zoom);
     //    //let mut viewer = value.borrow_mut();
     //});
     
+    // Példa Timer indítására a Play gombra
+    //let timer = slint::Timer::default();
+    let value = state_copy.clone();
+    ui.on_play_animation(move || {
+        on_play_animation(&mut value.borrow_mut());
+    });
+    
+    let value = state_copy.clone();
+    ui.on_begin_animation(move || {
+        on_begin_animation(&mut value.borrow_mut());
+    });
+    
+    let value = state_copy.clone();
+    ui.on_back_animation(move || {
+        on_back_animation(&mut value.borrow_mut());
+    });
+    let value = state_copy.clone();
+    ui.on_forward_animation(move || {
+        on_forward_animation(&mut value.borrow_mut());
+    });
+    
+    let value = state_copy.clone();
+    ui.on_loop_animation(move || {
+        on_loop_animation(&mut value.borrow_mut());
+    });
+    
+    let ui_weak_keys = ui.as_weak();
+    ui.on_key_pressed_event(move |text, ctrl, shift, alt| {
+        if alt {
+        }
+        else {
+            if ctrl {
+                if shift {
+                    if text == "c" || text == "C" { on_copy_view(&mut state.borrow_mut()); return true; }
+                    if text == "x" || text == "X" { on_change_view(&mut state.borrow_mut()); return true; }
+                }
+                else {
+                    if text == "c" { on_copy_image(&mut state.borrow_mut()); return true; }
+                    if text == "v" { on_paste_image(&mut state.borrow_mut()); return true; }
+                    if text == "x" { on_change_image(&mut state.borrow_mut()); return true;}
+                    if text == "r" { on_red_channel(&mut state.borrow_mut()); return true;}
+                    if text == "g" { on_green_channel(&mut state.borrow_mut()); return true;}
+                    if text == "b" { on_blue_channel(&mut state.borrow_mut()); return true;}
+                    if text == "i" { on_invert_channels(&mut state.borrow_mut()); return true;}
+                    if text == "1" { on_zoom(&mut state.borrow_mut(),1.0); return true; }
+                    if text == "2" { on_zoom(&mut state.borrow_mut(),2.0); return true; }
+                    if text == "3" { on_zoom(&mut state.borrow_mut(),3.0); return true; }
+                    if text == "4" { on_zoom(&mut state.borrow_mut(),4.0); return true; }
+                    if text == "5" { on_zoom(&mut state.borrow_mut(),5.0); return true; }
+                    if text == "6" { on_zoom(&mut state.borrow_mut(),6.0); return true; }
+                    if text == "7" { on_zoom(&mut state.borrow_mut(),7.0); return true; }
+                    if text == "8" { on_zoom(&mut state.borrow_mut(),8.0); return true; }
+                    if text == "9" { on_zoom(&mut state.borrow_mut(),9.0); return true; }
+                    if text == "0" { on_zoom(&mut state.borrow_mut(),10.0); return true; }
+                    let up_ar = slint::SharedString::from(slint::platform::Key::UpArrow);
+                    if text == up_ar    { on_up(&mut state.borrow_mut()); return true;}
+                    let down_ar = slint::SharedString::from(slint::platform::Key::DownArrow);
+                    if text == down_ar  { on_down(&mut state.borrow_mut()); return true;}
+                    let left_ar = slint::SharedString::from(slint::platform::Key::LeftArrow);
+                    if text == left_ar  { on_left(&mut state.borrow_mut()); return true;}
+                    let right_ar = slint::SharedString::from(slint::platform::Key::RightArrow);
+                    if text == right_ar { on_right(&mut state.borrow_mut()); return true;}
+                }
+            }
+            else {
+                if shift {
+                    if text == "s" || text == "S" { on_save_view(&mut state.borrow_mut()); return true; }
+                }
+                else {
+                    if text == "i" { on_info_clicked(&mut state.borrow_mut()); return true; }
+                    if text == "c" { on_color_setting(&mut state.borrow_mut()); return true; }
+                    if text == "o" { on_open_file(&mut state.borrow_mut()); return true; }
+                    if text == "r" { on_reopen_file(&mut state.borrow_mut()); return true; }
+                    if text == "b" { on_prev_image(&mut state.borrow_mut()); return true; }
+                    if text == "n" { on_next_image(&mut state.borrow_mut()); return true; }
+                    if text == "s" { on_save_file(&mut state.borrow_mut()); return true; }
+                    if text == "d" { on_change_background(&mut state.borrow_mut(),-1); return true; }
+                    if text == "+" { on_plus(&mut state.borrow_mut()); return true; }
+                    if text == "-" { on_minus(&mut state.borrow_mut()); return true; }
+                    if text == "1" { on_zoom(&mut state.borrow_mut(),1.0); return true; }
+                    if text == "2" { on_zoom(&mut state.borrow_mut(),0.5); return true; }
+                    if text == "3" { on_zoom(&mut state.borrow_mut(),0.45); return true; }
+                    if text == "4" { on_zoom(&mut state.borrow_mut(),0.4); return true; }
+                    if text == "4" { on_zoom(&mut state.borrow_mut(),0.35); return true; }
+                    if text == "5" { on_zoom(&mut state.borrow_mut(),0.3); return true; }
+                    if text == "7" { on_zoom(&mut state.borrow_mut(),0.25); return true; }
+                    if text == "8" { on_zoom(&mut state.borrow_mut(),0.2); return true; }
+                    if text == "9" { on_zoom(&mut state.borrow_mut(),0.15); return true; }
+                    if text == "0" { on_zoom(&mut state.borrow_mut(),0.1); return true; }
+                    let esc = slint::SharedString::from(slint::platform::Key::Escape);
+                    if text == esc {
+                        if let Some(ui) = ui_weak_keys.upgrade() {
+                            let _ = ui.window().hide();
+                        }
+                        return true; }
+                }
+            }
+        }
+        return false;
+    });
+    
+    let ui_weak_exit = ui.as_weak();
     ui.on_exit(move || {
         println!("exit");
-        if let Some(ui) = ui_weak.upgrade() {
+        if let Some(ui) = ui_weak_exit.upgrade() {
             let _ = ui.window().hide();
         }
     });
     
-    // Példa Timer indítására a Play gombra
-    //let timer = slint::Timer::default();
-    //let value = state_copy.clone();
-    ui.on_play_animation(move || {
-        println!("Play/Stop");
-        //let mut viewer = value.borrow_mut();
-        //timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
-            // Következő képkocka betöltése...
-    });
-    ui.on_begin_animation(move || {
-        println!("on_begin_animation");
-    });
-    ui.on_back_animation(move || {
-        println!("on_back_animation");
-    });
-    ui.on_forward_animation(move || {
-        println!("on_forward_animation");
-    });
-    ui.on_loop_animation(move || {
-        println!("on_loop_animation");
-    });
 }
 
+
+fn on_copy_image(viewer: &mut ImageViewer) {
+    println!("on_copy_image");
+    viewer.save_original = true;
+    viewer.copy_to_clipboard();
+}
+
+fn on_copy_view(viewer: &mut ImageViewer) {
+    println!("on_copy_view");
+    viewer.save_original = false;
+    viewer.copy_to_clipboard();
+}
+
+fn on_paste_image(viewer: &mut ImageViewer) {
+    println!("on_paste_image");
+    viewer.copy_from_clipboard();
+}
+
+fn on_save_file(viewer: &mut ImageViewer) {
+    println!("on_save_file");
+    viewer.save_original = true;
+    viewer.starting_save(&None);
+}
+
+fn on_save_view(viewer: &mut ImageViewer) {
+    println!("on_save_view");
+    viewer.save_original = false;
+    viewer.starting_save(&None);
+}
+
+fn on_open_recent(viewer: &mut ImageViewer, path_buf : PathBuf) {
+    println!("on_open_recent");
+    viewer.open_image(&path_buf,true);
+}
+
+fn on_open_here_recent(viewer: &mut ImageViewer, path_buf : PathBuf) {
+    println!("on_open_here_recent");
+    viewer.open_image_dialog(&Some(path_buf));
+}
+
+fn on_save_recent(viewer: &mut ImageViewer, path_buf : PathBuf) {
+    println!("on_save_recent");
+    viewer.save_original = true;
+    viewer.starting_save(&Some(path_buf));
+}
+    
+fn on_save_view_recent(viewer: &mut ImageViewer, path_buf : PathBuf) {
+    println!("on_save_view_recent");
+    viewer.save_original = false;
+    viewer.starting_save(&Some(path_buf));
+}
+
+fn on_open_file(viewer: &mut ImageViewer) {
+    println!("on_open_file");
+    viewer.open_image_dialog(&None);
+}
+
+fn on_change_image(viewer: &mut ImageViewer) {
+    println!("on_change_image");
+    viewer.save_original = true;
+    viewer.change_with_clipboard();
+}
+
+fn on_change_view(viewer: &mut ImageViewer) {
+    println!("on_change_view");
+    viewer.save_original = false;
+    viewer.change_with_clipboard();
+}
+
+fn on_reopen_file(viewer: &mut ImageViewer) {
+    println!("on_reopen_file");
+    viewer.load_image(true);
+}
+
+fn on_prev_image(viewer: &mut ImageViewer) {
+    println!("on_prev_image");
+    viewer.navigation(-1);
+}
+
+fn on_next_image(viewer: &mut ImageViewer) {
+    println!("on_next_image");
+    viewer.navigation(1);
+}
+
+fn on_info_clicked(viewer: &mut ImageViewer) {
+    println!("on_info_clicked");
+}
+
+fn on_change_background(viewer: &mut ImageViewer, mode: i32) {
+    println!("on_change_background");
+    let bkgrd = if mode >= 0 { BackgroundStyle::from(mode) } else { viewer.bg_style.clone().inc() };
+    viewer.bg_style = bkgrd;
+}
+
+fn on_down(viewer: &mut ImageViewer) {
+    println!("on_down");
+    // rotate to 0
+    let r = viewer.color_settings.rotate == Rotate::Rotate90
+        || viewer.color_settings.rotate == Rotate::Rotate270;
+    viewer.color_settings.rotate = Rotate::Rotate0;
+    viewer.review(true, r);
+}
+
+fn on_up(viewer: &mut ImageViewer) {
+    println!("on_up");
+    // rotate 180
+    viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate180);
+    viewer.review(true, false);
+}
+
+fn on_left(viewer: &mut ImageViewer) {
+    println!("on_left");
+    // rotate -90
+    viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate270);
+    viewer.review(true, true);
+}
+
+fn on_right(viewer: &mut ImageViewer) {
+    println!("on_right");
+    // rotate 90
+    viewer.color_settings.rotate = viewer.color_settings.rotate.add(Rotate::Rotate90);
+    viewer.review(true, true);
+}
+
+fn on_zoom(viewer: &mut ImageViewer, mag : f32) {
+    println!("on_zoom");
+    if viewer.magnify != mag {
+        viewer.want_magnify = mag;
+        viewer.review(true, false);
+    }
+}
+
+
+
+fn on_plus(viewer: &mut ImageViewer) {
+    println!("on_plus");
+    viewer.change_magnify = 1.0;
+    viewer.review(true, false);
+}
+
+fn on_minus(viewer: &mut ImageViewer) {
+    println!("on_minus");
+    viewer.change_magnify = -1.0;
+    viewer.review(true, false);
+}
+
+fn on_red_channel(viewer: &mut ImageViewer) {
+    println!("on_red_channel");
+    viewer.color_settings.show_r = !viewer.color_settings.show_r;
+    viewer.review(true, false);
+}
+
+fn on_green_channel(viewer: &mut ImageViewer) {
+    println!("on_green_channel");
+    viewer.color_settings.show_g = !viewer.color_settings.show_g;
+    viewer.review(true, false);
+}
+
+fn on_blue_channel(viewer: &mut ImageViewer) {
+    println!("on_blue_channel");
+    viewer.color_settings.show_b = !viewer.color_settings.show_b;
+    viewer.review(true, false);
+}
+
+fn on_invert_channels(viewer: &mut ImageViewer) {
+    println!("on_invert_channels");
+    viewer.color_settings.invert = !viewer.color_settings.invert;
+    viewer.review(true, false);
+}
+
+fn on_color_setting(viewer: &mut ImageViewer) {
+    println!("on_color_setting");
+    // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
+}
+
+//let value = state_copy.clone();
+//ui.on_about(move || {
+//    println!("on_about");
+//    //let mut viewer = value.borrow_mut();
+//});
+
+fn on_play_animation(viewer: &mut ImageViewer) {
+    println!("on_play_animation");
+// Példa Timer indítására a Play gombra
+//let timer = slint::Timer::default();
+    //timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
+        // Következő képkocka betöltése...
+}
+
+fn on_begin_animation(viewer: &mut ImageViewer) {
+    println!("on_begin_animation");
+}
+
+fn on_back_animation(viewer: &mut ImageViewer) {
+    println!("on_back_animation");
+}
+
+fn on_forward_animation(viewer: &mut ImageViewer) {
+    println!("on_forward_animation");
+}
+
+fn on_loop_animation(viewer: &mut ImageViewer) {
+    println!("on_loop_animation");
+}

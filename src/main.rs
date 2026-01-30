@@ -12,9 +12,36 @@ use crate::file_handlers::*;
 use crate::exif_my::*;
 use std::fs;
 use std::path::PathBuf;
-//use slint::ModelHandle;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::ops::{Add,Sub,Mul};
+
+#[derive(Debug, Clone, Copy)]
+pub struct Pf32{ x: f32, y: f32, }
+impl Default for Pf32 { fn default() -> Self { Self { x: 0.0, y: 0.0 } } }
+impl Into<(f32,f32)> for Pf32 { fn into(self) -> (f32,f32) { ( self.x, self.y ) } }
+impl Into<Pf32> for (f32,f32) { fn into(self) -> Pf32 { Pf32{ x:self.0, y:self.1 } } }
+impl Into<(i32,i32)> for Pf32 { fn into(self) -> (i32,i32) { ( (self.x+0.5) as i32, (self.y+0.5) as i32 ) } }
+impl Into<Pf32> for (i32,i32) { fn into(self) -> Pf32 { Pf32{ x:self.0 as f32, y:self.1 as f32 } } }
+impl Into<(u32,u32)> for Pf32 { fn into(self) -> (u32,u32) { ( (self.x+0.5) as u32, (self.y+0.5) as u32 ) } }
+impl Into<Pf32> for (u32,u32) { fn into(self) -> Pf32 { Pf32{ x:self.0 as f32, y:self.1 as f32 } } }
+impl Add for Pf32 { type Output = Self;
+    fn add(self, a: Self) -> Self { Pf32{ x: self.x + a.x, y: self.y + a.y } }
+}
+impl Sub for Pf32 { type Output = Self;
+    fn sub(self, a: Self) -> Self { Pf32{ x: self.x - a.x, y: self.y - a.y } }
+}
+impl Mul<f32> for Pf32 { type Output = Self;
+    fn mul(self, a: f32) -> Self { Pf32{ x: self.x * a, y: self.y * a } }
+}
+impl Mul for Pf32 { type Output = f32;
+    fn mul(self, a: Self) -> f32 { self.x * a.x + self.y * a.y }
+}
+impl Pf32 {
+    fn hypot(self, b: Pf32) -> f32 { (self - b).length() }
+    fn length( self ) -> f32 {  (self.x*self.x+self.y*self.y).sqrt() }
+}
+
 
 fn main() -> Result<(), slint::PlatformError> {
     //let icon = load_icon();
@@ -39,19 +66,21 @@ pub struct ImageViewer {
     pub list_of_images: Vec<fs::DirEntry>,
     pub actual_index: usize,
     pub magnify: f32,
+    pub change_magnify: f32,
+    pub want_magnify: f32,
     pub resize: f32,
-    pub first_appear: u32,
     
     // Slint kompatibilis kép tárolás
     pub current_slint_image: Option<slint::Image>, 
     pub original_image: Option<image::DynamicImage>,
     pub rgba_image: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     
-    pub screen_size: (f32, f32), 
-    pub image_size: (f32, f32), 
+    pub display_size: Pf32, 
+    pub window_size: Pf32, 
+    pub image_size: Pf32, 
     pub center: bool,
     pub show_info: bool,
-    pub aktualis_offset: (f32, f32),
+    pub aktualis_offset: Pf32,
     pub sort: SortDir,
     pub save_original: bool,
     pub save_dialog: Option<SaveSettings>,
@@ -74,7 +103,6 @@ pub struct ImageViewer {
     pub current_frame: usize,
     pub last_frame_time: std::time::Instant,
     pub anim_data: Option<AnimatedImage>,
-    pub change_magnify: f32,
     pub show_original_only: bool,
     pub modified: bool,
     // A többi meződet (settings, gpu, stb.) fokozatosan tölthetjük be
@@ -93,16 +121,18 @@ impl Default for ImageViewer {
             list_of_images: Vec::new(),
             actual_index: 0,
             magnify: 1.0,
+            change_magnify: 0.0,
+            want_magnify: -1.0,
             resize: 1.0,
-            first_appear: 1,
             current_slint_image: None,
             original_image: None,
             rgba_image: None,
-            screen_size: (1280.0, 1024.0),
-            image_size: (800.0, 600.0),
+            display_size: Pf32{x:1280.0, y:1024.0},
+            image_size: Pf32{x:800.0, y:600.0},
+            window_size: Pf32{x:800.0, y:600.0},
             center: true,
             show_info: false,
-            aktualis_offset: (0.0, 0.0),
+            aktualis_offset: Pf32::default(),
             sort: SortDir::Name,
             save_original: false, //always set before use
             save_dialog: None,
@@ -124,7 +154,6 @@ impl Default for ImageViewer {
             current_frame: 0,
             last_frame_time: std::time::Instant::now(),
             anim_data: None,
-            change_magnify: 0.0,
             show_original_only: false,
             modified: false,
         }

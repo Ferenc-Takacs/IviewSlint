@@ -12,6 +12,7 @@ use crate::exif_my::*;
 use crate::colors::*;
 use crate::image_processing::*;
 use crate::ImageViewer;
+use crate::Pf32;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum SortDir {
@@ -509,7 +510,7 @@ impl ImageViewer {
                                     if let Some(res) = resolution.clone() {
                                         let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                         exif.patch_thumbnail(&thumbnail);
-                                        exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
+                                        exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
                                     }
                                 }
                                 let exif_segment = img_parts::jpeg::JpegSegment::new_with_contents(
@@ -538,7 +539,7 @@ impl ImageViewer {
                                 if let Some(res) = resolution.clone() {
                                     let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                     exif.patch_thumbnail(&thumbnail);
-                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
+                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
                                 }
                             }
                             webp.set_exif(Some(img_parts::Bytes::from(exif.raw_exif)));
@@ -630,7 +631,7 @@ impl ImageViewer {
                                 if let Some(res) = resolution.clone() {
                                     let thumbnail = exif.generate_fitted_thumbnail(&img.to_rgba8());
                                     exif.patch_thumbnail(&thumbnail);
-                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.0 as u32, self.image_size.1 as u32);
+                                    exif.patch_exifdata( res.xres, res.yres, self.image_size.x as u32, self.image_size.y as u32);
                                 }
                             }
                             let original_pixel_offset = u32::from_le_bytes(bmp_data[10..14].try_into().unwrap()) as usize;
@@ -993,7 +994,7 @@ impl ImageViewer {
             }
 
             if (self.refit_reopen || !reopen) && self.fit_open {
-                self.first_appear = 1;
+                self.want_magnify = -1.0;
             }
             // Cím frissítése
             if let Some(file_name) = filepath.file_name().and_then(|n| n.to_str()) {

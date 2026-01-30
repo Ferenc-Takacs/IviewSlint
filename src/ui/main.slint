@@ -323,6 +323,17 @@ export component MainWindow inherits Window {
             clip: true; // Ha a kép nagyobb, ne lógjon ki
 
             Flickable {
+                viewport-width: bck.source.width * 1px;
+                viewport-height: bck.source.height * 1px;
+
+                bck := Image {
+                    source: root.background_image;
+                    width: parent.viewport-width;
+                    height: parent.viewport-height;
+                    image-fit: contain;
+                }
+            }
+            Flickable {
                 viewport-width: img.source.width * root.zoom_level * 1px;
                 viewport-height: img.source.height * root.zoom_level * 1px;
 
@@ -338,13 +349,14 @@ export component MainWindow inherits Window {
     }
 
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
-    in-out property <image> pasted_image;
+    in-out property <image> background_image;
     in-out property <image> current_image;
     in-out property <float> zoom_level: 1.0;
     in_out property <length> offset_x: 0px;
     in_out property <length> offset_y: 0px;
     in_out property <length> screen_width: 800px;
     in_out property <length> screen_height: 600px;
+    
     in property <[RecentFileSlint]> recent_files_data;
     
     callback open_recent(string);
@@ -383,74 +395,18 @@ export component MainWindow inherits Window {
     callback loop_animation();
     callback info_clicked();
     callback exit();
-
-
+    callback key_pressed_event(string, bool, bool, bool) -> bool;
+    
     forward_focus: key_handler;
     key_handler := FocusScope {
         key_pressed(event) => {
-            if (event.modifiers.alt) {
-            }
-            else {
-                if (event.modifiers.control) {
-                    if (event.modifiers.shift) {
-                        if (event.text == "c" || event.text == "C" ) { root.copy_view(); return accept; }
-                        if (event.text == "x" || event.text == "X" ) { root.change_view(); return accept; }
-                    }
-                    else {
-                        if (event.text == "c") { root.copy_image(); return accept; }
-                        if (event.text == "v") { root.paste_image(); return accept; }
-                        if (event.text == "x") { root.change_image(); return accept;}
-                        if (event.text == "r") { root.red_channel(); return accept;}
-                        if (event.text == "g") { root.green_channel(); return accept;}
-                        if (event.text == "b") { root.blue_channel(); return accept;}
-                        if (event.text == "i") { root.invert_channels(); return accept;}
-                        if (event.text == "1") { root.zoom(1.0); return accept; }
-                        if (event.text == "2") { root.zoom(2.0); return accept; }
-                        if (event.text == "3") { root.zoom(3.0); return accept; }
-                        if (event.text == "4") { root.zoom(4.0); return accept; }
-                        if (event.text == "5") { root.zoom(5.0); return accept; }
-                        if (event.text == "6") { root.zoom(6.0); return accept; }
-                        if (event.text == "7") { root.zoom(7.0); return accept; }
-                        if (event.text == "8") { root.zoom(8.0); return accept; }
-                        if (event.text == "9") { root.zoom(9.0); return accept; }
-                        if (event.text == "0") { root.zoom(10.0); return accept; }
-                        if (event.text == Key.UpArrow)    { root.up(); return accept;}
-                        if (event.text == Key.DownArrow)  { root.down(); return accept;}
-                        if (event.text == Key.LeftArrow)  { root.left(); return accept;}
-                        if (event.text == Key.RightArrow) { root.right(); return accept;}
-                    }
-                }
-                else {
-                    if (event.modifiers.shift ) {
-                        if (event.text == "s" || event.text == "S" ) { root.save_view(); return accept; }
-                    }
-                    else {
-                        if (event.text == "i") { root.info_clicked(); return accept; }
-                        if (event.text == "c") { root.color_setting(); return accept; }
-                        if (event.text == "o") { root.open_file(); return accept; }
-                        if (event.text == "r") { root.reopen_file(); return accept; }
-                        if (event.text == "s") { root.save_file(); return accept; }
-                        //if (event.text == "p") { change_recent(); return accept; }
-                        //if (event.text == "a") { root.AboutIView(); return accept; }
-                        if (event.text == "d") { root.change_background(-1); return accept; }
-                        if (event.text == "+") { root.plus(); return accept; }
-                        if (event.text == "-") { root.minus(); return accept; }
-                        if (event.text == "1") { root.zoom(1.0); return accept; }
-                        if (event.text == "2") { root.zoom(0.5); return accept; }
-                        if (event.text == "3") { root.zoom(0.45); return accept; }
-                        if (event.text == "4") { root.zoom(0.4); return accept; }
-                        if (event.text == "4") { root.zoom(0.35); return accept; }
-                        if (event.text == "5") { root.zoom(0.3); return accept; }
-                        if (event.text == "7") { root.zoom(0.25); return accept; }
-                        if (event.text == "8") { root.zoom(0.2); return accept; }
-                        if (event.text == "9") { root.zoom(0.15); return accept; }
-                        if (event.text == "0") { root.zoom(0.1); return accept; }
-                        if (event.text == Key.Escape) { root.exit(); return accept; }
-                    }
-                }
+            // Átadjuk a szöveget és a módosító billentyűket (Ctrl, Shift, Alt)
+            if (root.key_pressed_event(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt)) {
+                return accept;
             }
             reject
         }
     }
+
 }
 
