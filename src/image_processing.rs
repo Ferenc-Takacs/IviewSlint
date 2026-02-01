@@ -7,6 +7,7 @@ use crate::colors::*;
 use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel, ComponentHandle};
 use crate::Pf32;
 use image::math::Rect;
+use crate::ImageState;
 
 // Segédfüggvény a vágólapon lévő kép kimentéséhez egy ideiglenes fájlba
 pub fn save_clipboard_image() -> Option<PathBuf> {
@@ -90,7 +91,6 @@ pub struct AnimatedImage {
     pub total_frames: usize,
 }
 
-
 impl ImageViewer {
 
     pub fn review(&mut self, coloring: bool, new_rotate: bool) {
@@ -164,16 +164,11 @@ impl ImageViewer {
             height
         );
         let slint_img = Image::from_rgba8(slint_pixel_buffer);
-        if let Some(handle) = &self.ui_handle {
-            if let Some(ui) = handle.upgrade() {
-                 ui.set_current_image(slint_img);
-            }
-        }
-        self.sizing_window();
+        self.sizing_window(slint_img);
     }
 
 
-    fn sizing_window(&mut self){
+    fn sizing_window(&mut self, slint_img: slint::Image){
 
         let mut need_set = false;
         let mut inner_size: Pf32 = Default::default();
@@ -185,7 +180,7 @@ impl ImageViewer {
         let old_window_size = self.image_size * self.magnify;
         let display_size_netto = self.display_size - self.window_frame;
         let mut bigger = 1.0;
-        println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?} ", self.magnify, old_window_size, self.display_size, self.window_frame, self.want_magnify, self.change_magnify, display_size_netto);
+        //println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?} ", self.magnify, old_window_size, self.display_size, self.window_frame, self.want_magnify, self.change_magnify, display_size_netto);
         if self.want_magnify == -1.0 { // set size to fit
             let ratio = display_size_netto / self.image_size;
             self.magnify = ratio.x.min(ratio.y);
@@ -200,7 +195,7 @@ impl ImageViewer {
         }
 
         if self.change_magnify != 0.0 || self.want_magnify > 0.009 {
-            if self.want_magnify > 0.009 {
+            if self.want_magnify > 0.009 { // from menu
                 self.magnify = self.want_magnify;
             }
             else {
@@ -219,7 +214,7 @@ impl ImageViewer {
                 need_set = true;
             }
         }
-        if need_set {
+        //if need_set {
             //let mut corr = Pf32 { x: 4.0, y: 26.0 };
             inn = self.image_size * self.magnify;
             inn = inn.min(display_size_netto);
@@ -228,13 +223,13 @@ impl ImageViewer {
             pos = if self.center
                 { (display_size_netto - inn) * 0.5 }
                 else { off };
-        }
+        //}
 
 
         let current_offset = self.aktualis_offset;
         let new_size = self.image_size * self.magnify;
 
-        if bigger != 1.0 || self.want_magnify > 0.009 {
+        //if bigger != 1.0 || self.want_magnify > 0.009 {
             
             let mut pointer = if self.mouse_zoom {
                     self.mouse_pos
@@ -257,21 +252,28 @@ impl ImageViewer {
                 // need vertical scrollbar
                 off.y = offset.y;
             }
-        }
+        //}
 
-        if need_set || current_offset != off {
+        //if need_set || current_offset != off {
             if let Some(handle) = &self.ui_handle {
                 if let Some(ui) = handle.upgrade() {
-                    println!("{:?} {:?} {:?} {:?} {:?} {:?} ", self.image_size, inner_size, pos, off, self.magnify, self.center);
-                    ui.set_window_width(inner_size.x);
-                    ui.set_window_height(inner_size.y);
+                    println!("{:?} {:?} {:?} {:?} {:?} ", inner_size, pos, off, self.magnify, self.center);
+                    let title: slint::SharedString = format!("iViewer - {}. {}{}   {}",
+                        self.actual_index, self.image_name, if self.modified {'*'} else {' '},  self.magnify).into();
                     ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
-                    ui.set_offset_x(off.x);
-                    ui.set_offset_y(off.y);
-                    ui.set_zoom_level(self.magnify);
+                    let new_state = ImageState {
+                        window_width: inner_size.x,
+                        window_height: inner_size.y,
+                        offset_x: off.x,
+                        offset_y: off.x,
+                        zoom_level: self.magnify,
+                        current_image: slint_img,
+                        window_title: title,
+                    };
+                    ui.set_img_state(new_state);
                 }
             }
-        }
+        //}
 
         /*if zoom != 1.0 {
             if let Some(handle) = &self.ui_handle {

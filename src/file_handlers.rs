@@ -13,6 +13,7 @@ use crate::colors::*;
 use crate::image_processing::*;
 use crate::ImageViewer;
 use crate::Pf32;
+use crate::RecentFileSlint;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum SortDir {
@@ -106,7 +107,6 @@ pub fn get_settings_path() -> PathBuf {
     }
 }*/
 
-use crate::RecentFileSlint;
 
 impl ImageViewer {
     

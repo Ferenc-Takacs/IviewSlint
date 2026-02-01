@@ -1,9 +1,14 @@
 use crate::MainWindow; // A build.rs által generált típus
+use crate::ColorCorrectionWindow;
+use crate::AboutWindow;
+use crate::InfoWindow;
+use crate::SaveWindow;
 use crate::image_processing::*;
 use crate::colors::*;
 use crate::Pf32;
 
 use slint::{ComponentHandle,BackendSelector,Image,Color,SharedPixelBuffer,Rgba8Pixel};
+use crate::ImageState;
 //use slint::*;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -12,11 +17,24 @@ use std::env;
 use std::path::PathBuf;
 use display_info::DisplayInfo;
 
-pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageViewer>>) {
+pub fn file_callbacks(
+        ui_weak: slint::Weak<MainWindow>,
+        settings_ui: ColorCorrectionWindow,
+        about_ui: AboutWindow,
+        info_ui: InfoWindow,
+        save_window_ui: SaveWindow,
+        state: Rc<RefCell<ImageViewer>>) {
     let ui = ui_weak.unwrap();    
     let state_copy = state.clone();
+
+    let settings_handle = settings_ui.as_weak();    
+    let about_handle = about_ui.as_weak();    
+    let info_handle = info_ui.as_weak();    
+    let save_window_handle = save_window_ui.as_weak();
     
-    { // startup setting
+    {
+
+        // startup setting
         let display_info = DisplayInfo::all().unwrap()[0].clone();
        
         let args: Vec<String> = env::args().collect();
@@ -30,15 +48,24 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         
         let mut viewer = state_copy.borrow_mut();
         viewer.display_size = (display_info.width as f32, display_info.height as f32).into();
-        viewer.window_size = ( ui.get_window_width(), ui.get_window_height()).into();
+        let bkg = viewer.bg_style.clone().to();
+        ui.set_background_type(bkg);
         let pos = (viewer.display_size - viewer.window_size) * 0.5;
+        let new_state = ImageState {
+            window_width: viewer.window_size.x,     // length -> f32
+            window_height: viewer.window_size.y,    // length -> f32
+            offset_x: 0.0,                // length -> f32
+            offset_y: 0.0,                // length -> f32
+            zoom_level: viewer.magnify,       // float -> f32
+            current_image: slint::Image::default(),       // image -> slint::Image
+            window_title: "iViewer".into(),            // string -> slint::SharedString
+        };
+        ui.set_img_state(new_state);
         ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
         
         println!("{:?}",display_info);
         viewer.load_settings();
         
-        let bkg = viewer.bg_style.clone().to();
-        ui.set_background_type(bkg);
         if bkg > 3 {
             let tile = generate_checker_tile(bkg);
             ui.set_checker_tile(tile);
@@ -76,53 +103,33 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         
     }
     
+    ui.on_show_color_settings(move || {
+        if let Some(s_ui) = settings_handle.upgrade() {
+            println!("on_show_color_settings");
+            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+        }
+    });
     
-    /*let slint_img = ui.get_current_image(); // Ez kéri le a képet a GUI-ból
+    ui.on_show_about(move || {
+        if let Some(s_ui) = about_handle.upgrade() {
+            println!("on_show_about");
+            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+        }
+    });
 
-    if let Some(pixel_buffer) = slint_img.to_rgba8() {
-        let img_width = pixel_buffer.width();
-        let img_height = pixel_buffer.height();
+    ui.on_show_info(move || {
+        if let Some(s_ui) = info_handle.upgrade() {
+            println!("on_show_info");
+            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+        }
+    });
 
-        // Ablak méretezése
-        ui.window().set_size(slint::PhysicalSize::new(
-            img_width, 
-            img_height + 30 // +30 pixel a menüsornak
-        ));
-    }*/
-
-/*
-// MEGJELENÍTÉS (Ez váltja ki az újrarajzolást!)
-if let Some(ui) = ui_weak.upgrade() {
-    ui.set_current_image(slint_img);
-    ui.window().set_size(slint::PhysicalSize::new(w, h + 35));
-}
-//1. Nagyítás és Kicsinyítés (Zoom)
-ui.set_zoom_level(0.5); // 50%-os kicsinyítés
-ui.set_zoom_level(2.0); // 200%-os nagyítás
-//2. Látható kezdőpozíció (Scroll / Offset)
-flick := Flickable {
-    viewport-x: root.offset_x; // Új property-k kellenek
-    viewport-y: root.offset_y;
-    // ...
-}
-//Beállítás Rust-ból:
-ui.set_offset_x(- (kep_szelesseg * zoom / 2.0));
-//3. Egér pozíciója a képen
-img := Image {
-    source: root.current_image;
-    ta := TouchArea {}
-}
-// Ezt a koordinátát leolvashatod Rust-ban:
-let pos = ui.get_mouse_pos(); // Ha csinálsz rá property-t
-let valos_pixel_x = (mouse_x - ui.get_offset_x()) / ui.get_zoom_level();
-//4. Kép méretezése az ablakhoz (Fit to Window)
-let window_size = ui.window().size();
-let scale_x = window_size.width as f32 / img_width as f32;
-let scale_y = (window_size.height as f32 - 35.0) / img_height as f32;
-let final_zoom = scale_x.min(scale_y);
-ui.set_zoom_level(final_zoom);
-
-*/
+    /*ui.on_show_save_window(move || {
+        if let Some(s_ui) = save_window_handle.upgrade() {
+            println!("on_show_save_window");
+            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+        }
+    });*/
 
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -199,10 +206,10 @@ ui.set_zoom_level(final_zoom);
         on_next_image(&mut value.borrow_mut());
     });
     
-    let value = state_copy.clone();
+    /*let value = state_copy.clone();
     ui.on_info_clicked(move || {
         on_info_clicked(&mut value.borrow_mut());
-    });
+    });*/
 
     let value = state_copy.clone();
     ui.on_change_background(move |mode| {
@@ -235,13 +242,13 @@ ui.set_zoom_level(final_zoom);
     });
 
     let value = state_copy.clone();
-    ui.on_plus(move || {
-        on_plus(&mut value.borrow_mut());
+    ui.on_plus(move |i| {
+        on_plus(&mut value.borrow_mut(),i);
     });
 
     let value = state_copy.clone();
-    ui.on_minus(move || {
-        on_minus(&mut value.borrow_mut());
+    ui.on_minus(move |i| {
+        on_minus(&mut value.borrow_mut(),i);
     });
 
     let value = state_copy.clone();
@@ -264,10 +271,10 @@ ui.set_zoom_level(final_zoom);
         on_invert_channels(&mut value.borrow_mut(), i, true);
     });
 
-    let value = state_copy.clone();
+    /*let value = state_copy.clone();
     ui.on_color_setting(move || {
         on_color_setting(&mut value.borrow_mut());
-    });
+    });*/
 
     //let value = state_copy.clone();
     //ui.on_about(move || {
@@ -369,8 +376,8 @@ ui.set_zoom_level(final_zoom);
                     if text == "n" { on_next_image(&mut state.borrow_mut()); return true; }
                     if text == "s" { on_save_file(&mut state.borrow_mut()); return true; }
                     if text == "d" { on_change_background(&mut state.borrow_mut(),-1); return true; }
-                    if text == "+" { on_plus(&mut state.borrow_mut()); return true; }
-                    if text == "-" { on_minus(&mut state.borrow_mut()); return true; }
+                    if text == "+" { on_plus(&mut state.borrow_mut(),0.0); return true; }
+                    if text == "-" { on_minus(&mut state.borrow_mut(),0.0); return true; }
                     if text == "1" { on_zoom(&mut state.borrow_mut(),1.0); return true; }
                     if text == "2" { on_zoom(&mut state.borrow_mut(),0.5); return true; }
                     if text == "3" { on_zoom(&mut state.borrow_mut(),0.45); return true; }
@@ -579,15 +586,15 @@ fn on_zoom(viewer: &mut ImageViewer, mag : f32) {
 
 
 
-fn on_plus(viewer: &mut ImageViewer) {
+fn on_plus(viewer: &mut ImageViewer, i: f32) {
     println!("on_plus");
-    viewer.change_magnify = 1.0;
+    viewer.change_magnify = 1.0;//if i==0.0 { 1.0 } else {i};
     viewer.review(true, false);
 }
 
-fn on_minus(viewer: &mut ImageViewer) {
+fn on_minus(viewer: &mut ImageViewer, i : f32) {
     println!("on_minus");
-    viewer.change_magnify = -1.0;
+    viewer.change_magnify = -1.0; //if i==0.0 { -1.0 } else {i};
     viewer.review(true, false);
 }
 

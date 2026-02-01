@@ -1,12 +1,117 @@
 
-import { VerticalBox, HorizontalBox, Button } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, Button, ScrollView, Slider } from "std-widgets.slint";
 
 export struct RecentFileSlint {
     path: string,
     filename: string,
 }
 
-export component AboutIView inherits Window {
+export struct ImageState {
+    window_width: length,
+    window_height: length,
+    offset_x: length,
+    offset_y: length,
+    zoom_level: float,
+    current_image: image,
+    window_title: string,
+}
+
+export component ColorCorrectionWindow inherits Window {
+    title: "Color Correction";
+    width: 350px;
+    height: 500px;
+    background: #2a2a2a;
+    
+    // Itt ugyanúgy használhatod a Slidert és a többi widgetet
+    in-out property <float> gamma: 1.0;
+    callback settings_changed(float);
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 15px;
+        Text { text: "Képkorrekció"; font-size: 16px; }
+        
+        // Gamma példa
+        VerticalLayout {
+            Text { text: "Gamma: " + (round(root.gamma * 100) / 100); }
+            Slider {
+                value: root.gamma;
+                minimum: 0.5; maximum: 3.0;
+                changed => { 
+                    root.gamma = self.value;
+                    root.settings_changed(self.value);
+                }
+            }
+        }
+        // ... többi csúszka
+    }
+}
+
+export component InfoWindow inherits Window {
+    title: "Image Information";
+    width: 350px;
+    height: 500px;
+    background: #2a2a2a;
+    
+    // Itt ugyanúgy használhatod a Slidert és a többi widgetet
+    in-out property <float> gamma: 1.0;
+    callback settings_changed(float);
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 15px;
+        Text { text: "Képkorrekció"; font-size: 16px; }
+        
+        // Gamma példa
+        VerticalLayout {
+            Text { text: "Gamma: " + (round(root.gamma * 100) / 100); }
+            Slider {
+                value: root.gamma;
+                minimum: 0.5; maximum: 3.0;
+                changed => { 
+                    root.gamma = self.value;
+                    root.settings_changed(self.value);
+                }
+            }
+        }
+        // ... többi csúszka
+    }
+}
+
+export component SaveWindow inherits Window {
+    title: "Mage Save ...";
+    width: 350px;
+    height: 500px;
+    background: #2a2a2a;
+    
+    // Itt ugyanúgy használhatod a Slidert és a többi widgetet
+    in-out property <float> gamma: 1.0;
+    callback settings_changed(float);
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 15px;
+        Text { text: "Képkorrekció"; font-size: 16px; }
+        
+        // Gamma példa
+        VerticalLayout {
+            Text { text: "Gamma: " + (round(root.gamma * 100) / 100); }
+            Slider {
+                value: root.gamma;
+                minimum: 0.5; maximum: 3.0;
+                changed => { 
+                    root.gamma = self.value;
+                    root.settings_changed(self.value);
+                }
+            }
+        }
+        // ... többi csúszka
+    }
+}
+
+
+
+export component AboutWindow inherits Window {
     VerticalLayout {
         x: (parent.width - self.width) / 2.0;
         y: (parent.height - self.height) / 2.0;
@@ -41,9 +146,9 @@ export component AboutIView inherits Window {
 
 
 export component MainWindow inherits Window {
-    width: window_width;
-    height: window_height;
-    title: "IviewSlint - Image viewer";
+    width:  root.img_state.window_width;
+    height: root.img_state.window_height;
+    title:  root.img_state.window_title;
 
     MenuBar {
         Menu {
@@ -111,7 +216,7 @@ export component MainWindow inherits Window {
             MenuSeparator {}
             MenuItem {
                 title: @tr("About");
-                activated => {  }
+                activated => { root.show_about(); }
             }
             MenuItem {
                 title: @tr("Exit (Esc)");
@@ -122,11 +227,11 @@ export component MainWindow inherits Window {
             title: @tr("Option");
             MenuItem {
                 title: @tr("Info (I)");
-                activated => { info_clicked(); }
+                activated => { show_info(); }
             }
             MenuItem {
                 title: @tr("Color Setting (C)");
-                activated => { color_setting(); }
+                activated => { show_color_settings(); }
             }
             Menu {
                 title: @tr("Change Background (D)");
@@ -364,13 +469,33 @@ export component MainWindow inherits Window {
                 }
             }
  
-            Flickable {
+            ScrollView  {
             
-                viewport-width: img.source.width * root.zoom_level * 1px;
-                viewport-height: img.source.height * root.zoom_level * 1px;
+                viewport-width:  img.source.width  * root.img_state.zoom_level * 1px;
+                viewport-height: img.source.height * root.img_state.zoom_level * 1px;
+                viewport-x: root.img_state.offset_x ;
+                viewport-y: root.img_state.offset_y ;
+
+                img := Image {
+                    source: root.img_state.current_image;
+                    width: parent.viewport-width;
+                    height: parent.viewport-height;
+                    image-fit: contain;
+                }
                 
                 TouchArea {
                     mouse_cursor: pointer;
+                    scroll_event(event) => {
+                        if (root.control) {
+                            if (event.delta_y > 0) {
+                                root.plus(event.delta_y);
+                            } else {
+                                root.minus(event.delta_y);
+                            }
+                            return accept;
+                        }
+                        reject
+                    }
                     pointer_event(event) => {
                         if (root.control && event.kind == PointerEventKind.move) {
                             root.mouse_move( self.mouse-x, self.mouse-y);
@@ -385,25 +510,20 @@ export component MainWindow inherits Window {
                     }
                 }
 
-                img := Image {
-                    source: root.current_image;
-                    width: parent.viewport-width;
-                    height: parent.viewport-height;
-                    image-fit: contain;
-                }
             }
         }
 
     }
 
+
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
+    in-out property <ImageState> img_state:
+        {
+            zoom_level: 1.0,
+            current_image: @image-url(""), // Ez üres képet eredményez
+            window_title: "iViewer"
+        };
     in-out property <image> checker_tile;
-    in-out property <image> current_image;
-    in-out property <float> zoom_level: 1.0;
-    in_out property <length> offset_x: 0px;
-    in_out property <length> offset_y: 0px;
-    in_out property <length> window_width: 800px;
-    in_out property <length> window_height: 600px;
     
     private property <bool> control;
     private property <bool> ctrl_event;
@@ -432,9 +552,9 @@ export component MainWindow inherits Window {
     callback down();
     callback left();
     callback right();
-    callback plus();
-    callback minus();
-    callback color_setting();
+    callback plus(length);
+    callback minus(length);
+    callback show_color_settings();
     callback open_file();
     callback reopen_file();
     callback save_file();
@@ -444,7 +564,7 @@ export component MainWindow inherits Window {
     callback paste_image();
     callback change_image();
     callback change_view();
-    //callback about();
+    callback show_about();
     callback prev_image();
     callback next_image();
     callback play_animation();
@@ -452,7 +572,7 @@ export component MainWindow inherits Window {
     callback back_animation();
     callback forward_animation();
     callback loop_animation();
-    callback info_clicked();
+    callback show_info();
     callback exit();
     callback key_pressed_event(string, bool, bool, bool) -> bool;
     
@@ -464,6 +584,12 @@ export component MainWindow inherits Window {
             if( !root.control ) { root.mouse_off(); }
             if (root.key_pressed_event(event.text, root.control, event.modifiers.shift, event.modifiers.alt)) {
                 return accept;
+            }
+            reject
+        }
+        key_released(event) => {
+            if (!event.modifiers.control) {
+                root.control = false;
             }
             reject
         }
