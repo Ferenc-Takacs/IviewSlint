@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::env;
 use crate::ImageViewer;
 use crate::colors::*;
-use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel};
+use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel, ComponentHandle};
 use crate::Pf32;
 use image::math::Rect;
 
@@ -62,6 +62,17 @@ impl BackgroundStyle {
             _ => BackgroundStyle::Black,
         }
     }
+    pub fn to(self) -> i32 {
+        match self {
+            BackgroundStyle::Black => 0,
+            BackgroundStyle::Gray => 1,
+            BackgroundStyle::White => 2,
+            BackgroundStyle::Green => 3,
+            BackgroundStyle::DarkBright => 4,
+            BackgroundStyle::GreenMagenta => 5,
+            BackgroundStyle::BlackBrown => 6,
+        }
+    }
 }
 
 
@@ -79,81 +90,6 @@ pub struct AnimatedImage {
     pub total_frames: usize,
 }
 
-/*pub fn color_image_to_dynamic(color_image: ColorImage) -> image::DynamicImage {
-    let size = color_image.size;
-    // Flatten Color32 (RGBA) pixels into a Vec<u8>
-    let pixels = color_image.pixels.iter()
-        .flat_map(|p| [p.r(), p.g(), p.b(), p.a()])
-        .collect::<Vec<u8>>();
-
-    // Create an RgbaImage buffer
-    let buffer = image::RgbaImage::from_raw(size[0] as u32, size[1] as u32, pixels)
-        .expect("Failed to create image buffer");
-
-    // Wrap in DynamicImage
-    image::DynamicImage::ImageRgba8(buffer)
-}*/
-
-pub fn draw_custom_background(bg_style: &BackgroundStyle) {
-    let rect = Rect::new(); // TODO !!!! ui.max_rect(); // A terület, ahová a kép kerülne
-    if rect.width() <= 0.0 {
-        return;
-    }
-    let paint = ui.painter();
-    let (col1, col2) = if *bg_style == BackgroundStyle::DarkBright {
-        (Color::from_rgb_u8(35,35,35), Color::from_rgb_u8(70,70,70))
-    } else if *bg_style == BackgroundStyle::GreenMagenta {
-        (
-            Color::from_rgb_u8(40, 180, 40),
-            Color::from_rgb_u8(180, 50, 180),
-        )
-    } else if *bg_style == BackgroundStyle::BlackBrown {
-        (
-            Color::from_rgb_u8(0, 0, 0),
-            Color::from_rgb_u8(200, 50, 10),
-        )
-    } else {
-        (Color::from_rgb_u8(0,0,0), Color::from_rgb_u8(255,255,255))
-    };
-    match *bg_style {
-        BackgroundStyle::Black => {
-            paint.rect_filled(rect, Color::from_rgb_u8(0,0,0));
-        }
-        BackgroundStyle::White => {
-            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(255,255,255));
-        }
-        BackgroundStyle::Gray => {
-            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(128,128,128));
-        }
-        BackgroundStyle::Green => {
-            paint.rect_filled(rect, 0.0, Color::from_rgb_u8(50, 200, 50));
-        }
-        _ => {
-            paint.rect_filled(rect, 0.0, col1);
-            let tile_size = 16.0; // A négyzetek mérete pixelben
-            let color_light = col2;
-            let num_x = (rect.width() / tile_size).ceil() as i32 + 1;
-            let num_y = (rect.height() / tile_size).ceil() as i32 + 1;
-            for y in 0..=num_y {
-                for x in 0..=num_x {
-                    if (x + y) % 2 == 0 {
-                        let tile_rect = Rect::from_min_size(
-                            pos2(
-                                rect.left() + x as f32 * tile_size,
-                                rect.top() + y as f32 * tile_size,
-                            ),
-                            vec2(tile_size, tile_size),
-                        );
-                        let visible_tile = tile_rect.intersect(rect);
-                        if visible_tile.width() > 0.0 && visible_tile.height() > 0.0 {
-                            paint.rect_filled(visible_tile, 0.0, color_light);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 impl ImageViewer {
 
@@ -219,8 +155,8 @@ impl ImageViewer {
                 lut.apply_lut(&mut rgba_image); 
             }
         }
-
-        self.sizing_window();
+        self.rgba_image = Some(rgba_image.clone());
+        
 
         let slint_pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
             rgba_image.as_raw(), 
@@ -233,100 +169,121 @@ impl ImageViewer {
                  ui.set_current_image(slint_img);
             }
         }
-
-        //self.rgba_image = Some(rgba_image.clone());
-        //let pixel_data = rgba_image.into_raw();
-        //let color_image = egui::ColorImage::from_rgba_unmultiplied(
-        //    [self.image_size.0 as usize, self.image_size.1 as usize],
-        //    &pixel_data,
-        //);
-        // TODO !!!!
-        //self.texture = Some(ctx.load_texture("kep", color_image, Default::default()));
+        self.sizing_window();
     }
 
+
     fn sizing_window(&mut self){
-        /*let mut in_w;
-        let mut in_h;
-        let old_size = self.image_size * self.magnify;
+
+        let mut need_set = false;
+        let mut inner_size: Pf32 = Default::default();
+        let mut pos: Pf32 = Default::default();
+        let mut off = Pf32 { x: 0.0, y: 0.0 };
+
+        let mut inn : Pf32 = Default::default();
+        let regi_nagyitas = self.magnify;
+        let old_window_size = self.image_size * self.magnify;
+        let display_size_netto = self.display_size - self.window_frame;
+        let mut bigger = 1.0;
+        println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?} ", self.magnify, old_window_size, self.display_size, self.window_frame, self.want_magnify, self.change_magnify, display_size_netto);
         if self.want_magnify == -1.0 { // set size to fit
-            self.frame = ( 10.0 , 60 ); // title, menu, padding, rendszer tálca
-            self.display_size_netto = self.screen_size - self.frame;
-            let ratio = (self.display_size_netto) / self.image_size;
+            let ratio = display_size_netto / self.image_size;
             self.magnify = ratio.x.min(ratio.y);
 
-            if let Some(_) = &self.texture {
-            } else {
-                self.magnify /= 2.0;
+            if !self.rgba_image.is_some() {
+                self.magnify /= 2.0; // empty window
             }
 
             let round_ = if self.magnify < 1.0 { 0.0 } else { 0.5 };
-            self.magnify = (((self.magnify * 20.0 + round_) as i32) as f32) / 20.0; // round
-            in_w = (self.image_size.x * self.magnify).min(self.display_size_netto.x);
-            in_h = (self.image_size.y * self.magnify).min(self.display_size_netto.y);
-            let inner_size = egui::Vec2 {
-                x: in_w + 4.0,
-                y: in_h + 26.0,
-            };
-            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(inner_size));
-            let pos = if self.center {
-                egui::pos2(
-                    (self.display_size_netto.x - in_w) / 2.0 - 8.0,
-                    (self.display_size_netto.y - in_h) / 2.0 - 10.0,
-                )
-            } else {
-                egui::pos2(-8.0, 0.0)
-            };
-            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(pos));
-            //println!("inner:{:?} pos:{:?} magn: {:?}", inner_size, pos, self.magnify);
+            self.magnify = (((self.magnify * 20.0 + round_) as i32) as f32) / 20.0;
+            need_set = true;
         }
 
-        let mut zoom = 1.0;
-        if *change_magnify != 0.0 {
-            let regi_nagyitas = self.magnify;
-            if self.magnify >= 1.0 {
-                *change_magnify *= 2.0;
+        if self.change_magnify != 0.0 || self.want_magnify > 0.009 {
+            if self.want_magnify > 0.009 {
+                self.magnify = self.want_magnify;
             }
-            if self.magnify >= 4.0 {
-                *change_magnify *= 2.0;
+            else {
+                if self.magnify >= 1.0 {
+                    self.change_magnify *= 2.0;
+                }
+                else if self.magnify >= 4.0 {
+                    self.change_magnify *= 2.0;
+                }
+                self.magnify = (regi_nagyitas * 1.0 + (0.05 * self.change_magnify)).clamp(0.1, 10.0);
+                self.magnify = (((self.magnify * 100.0 + 0.5) as i32) as f32) / 100.0; // round
             }
-            self.magnify = (regi_nagyitas * 1.0 + (0.05 * *change_magnify)).clamp(0.1, 10.0);
-            self.magnify = (((self.magnify * 100.0 + 0.5) as i32) as f32) / 100.0; // round
 
             if self.magnify != regi_nagyitas {
-                zoom = self.magnify / regi_nagyitas;
-                in_w = (self.image_size.x * self.magnify).min(self.display_size_netto.x);
-                in_h = (self.image_size.y * self.magnify).min(self.display_size_netto.y);
-                let inner_size = egui::Vec2 {
-                    x: in_w + 4.0,
-                    y: in_h + 26.0,
-                };
-                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(inner_size));
-                let pos = if self.center {
-                    egui::pos2(
-                        (self.display_size_netto.x - in_w) / 2.0,
-                        (self.display_size_netto.y - in_h) / 2.0,
-                    )
+                bigger = self.magnify / regi_nagyitas;
+                need_set = true;
+            }
+        }
+        if need_set {
+            //let mut corr = Pf32 { x: 4.0, y: 26.0 };
+            inn = self.image_size * self.magnify;
+            inn = inn.min(display_size_netto);
+            inner_size = inn;// + corr;
+            println!("{:?} {:?}", inner_size, inn);
+            pos = if self.center
+                { (display_size_netto - inn) * 0.5 }
+                else { off };
+        }
+
+
+        let current_offset = self.aktualis_offset;
+        let new_size = self.image_size * self.magnify;
+
+        if bigger != 1.0 || self.want_magnify > 0.009 {
+            
+            let mut pointer = if self.mouse_zoom {
+                    self.mouse_pos
                 } else {
-                    egui::pos2(0.0, 0.0)
+                    self.window_size * 0.5
                 };
-                ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(pos));
-                //println!("inner:{:?} pos:{:?} magn: {:?}", inner_size, pos, self.magnify);
+            pointer.x = pointer.x.clamp(0.0, old_window_size.x);
+            pointer.y = pointer.y.clamp(0.0, old_window_size.y);
+
+            let mut offset = current_offset; // <= 0
+            offset += pointer;
+            offset *= bigger;
+            offset -= pointer;
+
+            if new_size.x > display_size_netto.x {
+                // need horizontal scrollbar
+                off.x = offset.x;
+            }
+            if new_size.y > display_size_netto.y {
+                // need vertical scrollbar
+                off.y = offset.y;
+            }
+        }
+
+        if need_set || current_offset != off {
+            if let Some(handle) = &self.ui_handle {
+                if let Some(ui) = handle.upgrade() {
+                    println!("{:?} {:?} {:?} {:?} {:?} {:?} ", self.image_size, inner_size, pos, off, self.magnify, self.center);
+                    ui.set_window_width(inner_size.x);
+                    ui.set_window_height(inner_size.y);
+                    ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
+                    ui.set_offset_x(off.x);
+                    ui.set_offset_y(off.y);
+                    ui.set_zoom_level(self.magnify);
+                }
+            }
+        }
+
+        /*if zoom != 1.0 {
+            if let Some(handle) = &self.ui_handle {
+                if let Some(ui) = handle.upgrade() {
+                }
             }
         }*/
-        
-        /* beállítandók
-            in-out property <image> current_image;
-            in-out property <float> zoom_level: 1.0;
-            in_out property <length> offset_x: 0px;
-            in_out property <length> offset_y: 0px;
-            in_out property <length> screen_width: 800px;
-            in_out property <length> screen_height: 600px;
-        viewer.window_size = ( ui.get_screen_width(), ui.get_screen_height());
-        let pos_x = (viewer.display_size.0 - viewer.window_size.0) / 2.0;
-        let pos_y = (viewer.display_size.1 - viewer.window_size.y) / 2.0;
-        ui.window().set_position(slint::PhysicalPosition::new(pos_x as i32, pos_y as i32));
-        */
+        self.aktualis_offset = off;
+        self.want_magnify = 0.0;
+        self.change_magnify = 0.0;
     }
+
 
     pub fn pick_color(&self, pixel_x : u32,pixel_y: u32) -> Option<Color> {
         if let Some(rgba_image) = &self.rgba_image {
@@ -337,6 +294,7 @@ impl ImageViewer {
         }
         None
     }
+
 
     pub fn navigation(&mut self, irany: i32) {
         if self.list_of_images.is_empty() {

@@ -39,9 +39,10 @@ export component AboutIView inherits Window {
     }
 }
 
+
 export component MainWindow inherits Window {
-    width: screen_width;
-    height: screen_height;
+    width: window_width;
+    height: window_height;
     title: "IviewSlint - Image viewer";
 
     MenuBar {
@@ -130,31 +131,45 @@ export component MainWindow inherits Window {
             Menu {
                 title: @tr("Change Background (D)");
                 MenuItem {
-                    title: "White";
+                    title: "Black";
+                    //checkable: true;
+                    //checked: root.background_type == 0;
                     activated => { change_background(0); }
                 }
                 MenuItem {
                     title: "Gray";
+                    //checkable: true;
+                    //checked: root.background_type == 1;
                     activated => { change_background(1); }
                 }
                 MenuItem {
-                    title: "Black";
+                    title: "White";
+                    //checkable: true;
+                    //checked: root.background_type == 2;
                     activated => { change_background(2); }
                 }
                 MenuItem {
                     title: "Green";
+                    //checkable: true;
+                    //checked: root.background_type == 3;
                     activated => { change_background(3); }
                 }
                 MenuItem {
-                    title: "Dark&Gray";
+                    title: "Dark & Gray";
+                    //checkable: true;
+                    //checked: root.background_type == 4;
                     activated => { change_background(4); }
                 }
                 MenuItem {
-                    title: "Green&Magenta";
+                    title: "Green & Magenta";
+                    //checkable: true;
+                    //checked: root.background_type == 5;
                     activated => { change_background(5); }
                 }
                 MenuItem {
-                    title: "Black&Brown";
+                    title: "Black & Brown";
+                    //checkable: true;
+                    //checked: root.background_type == 6;
                     activated => { change_background(6); }
                 }
             }
@@ -181,19 +196,27 @@ export component MainWindow inherits Window {
                 title: @tr("Channels hide/show");
                 MenuItem {
                     title: "Red (Ctrl+R)";
-                    activated => { red_channel(); }
+                    //checkable: true;
+                    //checked: root.red_checked;
+                    activated => { red_channel(root.red_checked); }
                 }
                 MenuItem {
                     title: "Green (Ctrl+G)";
-                    activated => { green_channel(); }
+                    //checkable: true;
+                    //checked: root.green_checked;
+                    activated => { green_channel(root.green_checked); }
                 }
                 MenuItem {
                     title: "Blue (Ctrl+B)";
-                    activated => { blue_channel(); }
+                    //checkable: true;
+                    //checked: root.blue_checked;
+                    activated => { blue_channel(root.blue_checked); }
                 }
                 MenuItem {
                     title: "Invert (Ctrl+I)";
-                    activated => { invert_channels(); }
+                    //checkable: true;
+                    //checked: root.invert_checked;
+                    activated => { invert_channels(root.invert_checked); }
                 }
             }
             MenuSeparator {}
@@ -308,6 +331,7 @@ export component MainWindow inherits Window {
             }
             MenuItem {
                 title: @tr("🔁 Loop");
+                checkable: true;
                 activated => { loop_animation(); }
             }
         }
@@ -320,22 +344,46 @@ export component MainWindow inherits Window {
         spacing: 0px;
 
         Rectangle {
+        
             clip: true; // Ha a kép nagyobb, ne lógjon ki
-
-            Flickable {
-                viewport-width: bck.source.width * 1px;
-                viewport-height: bck.source.height * 1px;
-
-                bck := Image {
-                    source: root.background_image;
-                    width: parent.viewport-width;
-                    height: parent.viewport-height;
-                    image-fit: contain;
+            
+            background: 
+                root.background_type == 1 ? gray :
+                root.background_type == 2 ? white :
+                root.background_type == 3 ? #3c3 :
+                root.background_type == 4 ? #222 :
+                root.background_type == 5 ? #3b3 :  black;
+ 
+            if ( root.background_type > 3 ) : Rectangle {            
+                Image {
+                    source: root.checker_tile;
+                    horizontal-tiling: repeat;
+                    vertical-tiling: repeat;
+                    width: 100%;
+                    height: 100%;
                 }
             }
+ 
             Flickable {
+            
                 viewport-width: img.source.width * root.zoom_level * 1px;
                 viewport-height: img.source.height * root.zoom_level * 1px;
+                
+                TouchArea {
+                    mouse_cursor: pointer;
+                    pointer_event(event) => {
+                        if (root.control && event.kind == PointerEventKind.move) {
+                            root.mouse_move( self.mouse-x, self.mouse-y);
+                            root.ctrl_event = true;
+                        }
+                        else if ( event.kind == PointerEventKind.cancel) {
+                            root.mouse_off();
+                        }
+                        else {
+                            root.mouse_pos( self.mouse-x, self.mouse-y);
+                        }
+                    }
+                }
 
                 img := Image {
                     source: root.current_image;
@@ -349,16 +397,31 @@ export component MainWindow inherits Window {
     }
 
     // Callback-ek, amiket Rust-ból fogunk meghívni/kezelni
-    in-out property <image> background_image;
+    in-out property <image> checker_tile;
     in-out property <image> current_image;
     in-out property <float> zoom_level: 1.0;
     in_out property <length> offset_x: 0px;
     in_out property <length> offset_y: 0px;
-    in_out property <length> screen_width: 800px;
-    in_out property <length> screen_height: 600px;
+    in_out property <length> window_width: 800px;
+    in_out property <length> window_height: 600px;
+    
+    private property <bool> control;
+    private property <bool> ctrl_event;
     
     in property <[RecentFileSlint]> recent_files_data;
+    in property <int> background_type: 0; // 0-3: egyszínű, 4-6: pepita
+    callback red_channel(bool);
+    in_out property <bool> red_checked;
+    callback green_channel(bool);
+    in_out property <bool> green_checked;
+    callback blue_channel(bool);
+    in_out property <bool> blue_checked;
+    callback invert_channels(bool);
+    in_out property <bool> invert_checked;
     
+    callback mouse_move(length, length);
+    callback mouse_pos(length, length);
+    callback mouse_off();
     callback open_recent(string);
     callback open_here_recent(string);
     callback save_recent(string);
@@ -371,10 +434,6 @@ export component MainWindow inherits Window {
     callback right();
     callback plus();
     callback minus();
-    callback red_channel();
-    callback green_channel();
-    callback blue_channel();
-    callback invert_channels();
     callback color_setting();
     callback open_file();
     callback reopen_file();
@@ -401,7 +460,9 @@ export component MainWindow inherits Window {
     key_handler := FocusScope {
         key_pressed(event) => {
             // Átadjuk a szöveget és a módosító billentyűket (Ctrl, Shift, Alt)
-            if (root.key_pressed_event(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt)) {
+            root.control = event.modifiers.control;
+            if( !root.control ) { root.mouse_off(); }
+            if (root.key_pressed_event(event.text, root.control, event.modifiers.shift, event.modifiers.alt)) {
                 return accept;
             }
             reject

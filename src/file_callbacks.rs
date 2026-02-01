@@ -1,10 +1,9 @@
 use crate::MainWindow; // A build.rs által generált típus
-use crate::Pf32;
 use crate::image_processing::*;
 use crate::colors::*;
-//use crate::gpu_colors::*;
+use crate::Pf32;
 
-use slint::ComponentHandle;
+use slint::{ComponentHandle,BackendSelector,Image,Color,SharedPixelBuffer,Rgba8Pixel};
 //use slint::*;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -18,7 +17,6 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
     let state_copy = state.clone();
     
     { // startup setting
-        
         let display_info = DisplayInfo::all().unwrap()[0].clone();
        
         let args: Vec<String> = env::args().collect();
@@ -32,12 +30,23 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         
         let mut viewer = state_copy.borrow_mut();
         viewer.display_size = (display_info.width as f32, display_info.height as f32).into();
-        viewer.window_size = ( ui.get_screen_width(), ui.get_screen_height()).into();
+        viewer.window_size = ( ui.get_window_width(), ui.get_window_height()).into();
         let pos = (viewer.display_size - viewer.window_size) * 0.5;
         ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
         
         println!("{:?}",display_info);
         viewer.load_settings();
+        
+        let bkg = viewer.bg_style.clone().to();
+        ui.set_background_type(bkg);
+        if bkg > 3 {
+            let tile = generate_checker_tile(bkg);
+            ui.set_checker_tile(tile);
+        }
+        ui.set_red_checked(viewer.color_settings.show_r);
+        ui.set_green_checked(viewer.color_settings.show_g);
+        ui.set_blue_checked(viewer.color_settings.show_b);
+        ui.set_invert_checked(viewer.color_settings.invert);
         
         if let Some(path) = start_image {
             if clipboard {
@@ -57,6 +66,14 @@ pub fn file_callbacks(ui_weak: slint::Weak<MainWindow>, state: Rc<RefCell<ImageV
         viewer.refresh_recent_list();
         let rec = &viewer.config.recent_files;
         println!("{:?}",viewer.display_size);
+        
+        let selector = BackendSelector::new().require_opengl_es_with_version(3, 0);
+        if let Err(err) = selector.select() {
+            println!("Error selecting backend with OpenGL ES support:\n   {err}");
+            viewer.use_gpu = false;
+            viewer.gpu_tried_init = true;
+        }
+        
     }
     
     
@@ -228,23 +245,23 @@ ui.set_zoom_level(final_zoom);
     });
 
     let value = state_copy.clone();
-    ui.on_red_channel(move || {
-        on_red_channel(&mut value.borrow_mut());
+    ui.on_red_channel(move |r| {
+        on_red_channel( &mut value.borrow_mut(), r, true);
     });
 
     let value = state_copy.clone();
-    ui.on_green_channel(move || {
-        on_green_channel(&mut value.borrow_mut());
+    ui.on_green_channel(move |g| {
+        on_green_channel(&mut value.borrow_mut(), g, true);
     });
 
     let value = state_copy.clone();
-    ui.on_blue_channel(move || {
-        on_blue_channel(&mut value.borrow_mut());
+    ui.on_blue_channel(move |b| {
+        on_blue_channel(&mut value.borrow_mut(), b, true);
     });
 
     let value = state_copy.clone();
-    ui.on_invert_channels(move || {
-        on_invert_channels(&mut value.borrow_mut());
+    ui.on_invert_channels(move |i| {
+        on_invert_channels(&mut value.borrow_mut(), i, true);
     });
 
     let value = state_copy.clone();
@@ -284,6 +301,23 @@ ui.set_zoom_level(final_zoom);
         on_loop_animation(&mut value.borrow_mut());
     });
     
+    let value = state_copy.clone();
+    ui.on_mouse_move(move |posx,posy| {
+        let mut viewer = value.borrow_mut();
+        viewer.mouse_pos = Pf32{ x: posx, y: posy };
+    });
+    
+    let value = state_copy.clone();
+    ui.on_mouse_pos(move |posx,posy| {
+        let mut viewer = value.borrow_mut();
+        viewer.mouse_pos = Pf32{ x: posx, y: posy };
+    });
+    
+    let value = state_copy.clone();
+    ui.on_mouse_off(move || {
+        let mut viewer = value.borrow_mut();
+    });
+    
     let ui_weak_keys = ui.as_weak();
     ui.on_key_pressed_event(move |text, ctrl, shift, alt| {
         if alt {
@@ -298,10 +332,10 @@ ui.set_zoom_level(final_zoom);
                     if text == "c" { on_copy_image(&mut state.borrow_mut()); return true; }
                     if text == "v" { on_paste_image(&mut state.borrow_mut()); return true; }
                     if text == "x" { on_change_image(&mut state.borrow_mut()); return true;}
-                    if text == "r" { on_red_channel(&mut state.borrow_mut()); return true;}
-                    if text == "g" { on_green_channel(&mut state.borrow_mut()); return true;}
-                    if text == "b" { on_blue_channel(&mut state.borrow_mut()); return true;}
-                    if text == "i" { on_invert_channels(&mut state.borrow_mut()); return true;}
+                    if text == "r" { on_red_channel(&mut state.borrow_mut(),false,false); return true;}
+                    if text == "g" { on_green_channel(&mut state.borrow_mut(),false,false); return true;}
+                    if text == "b" { on_blue_channel(&mut state.borrow_mut(),false,false); return true;}
+                    if text == "i" { on_invert_channels(&mut state.borrow_mut(),false,false); return true;}
                     if text == "1" { on_zoom(&mut state.borrow_mut(),1.0); return true; }
                     if text == "2" { on_zoom(&mut state.borrow_mut(),2.0); return true; }
                     if text == "3" { on_zoom(&mut state.borrow_mut(),3.0); return true; }
@@ -460,7 +494,49 @@ fn on_info_clicked(viewer: &mut ImageViewer) {
 fn on_change_background(viewer: &mut ImageViewer, mode: i32) {
     println!("on_change_background");
     let bkgrd = if mode >= 0 { BackgroundStyle::from(mode) } else { viewer.bg_style.clone().inc() };
-    viewer.bg_style = bkgrd;
+    viewer.bg_style = bkgrd.clone();
+    let bkg = bkgrd.to();
+    
+    if let Some(handle) = &viewer.ui_handle {
+        if let Some(ui) = handle.upgrade() {
+            if bkg > 3 {
+                let bkg_t = generate_checker_tile(bkg);
+                ui.set_checker_tile(bkg_t);
+            }
+            ui.set_background_type(bkg);
+        }
+    }
+}
+
+
+fn generate_checker_tile(style: i32) -> Image {
+    // Stílus alapján kiválasztjuk a két színt (RGBA)
+    let (c1, c2) = match style {
+        4 => (Color::from_rgb_u8(35,35,35), Color::from_rgb_u8(70,70,70)),
+        5 => (Color::from_rgb_u8(40, 180, 40),Color::from_rgb_u8(180, 50, 180)),
+        6 => (Color::from_rgb_u8(0, 0, 0), Color::from_rgb_u8(200, 50, 10)),
+        _ => (Color::from_rgb_u8(0,0,0), Color::from_rgb_u8(255,255,255)),
+        //(Color::from_rgb_u8(238, 238, 238), Color::from_rgb_u8(204, 204, 204)), // Szürke
+        //(Color::from_rgb_u8(68, 34, 34), Color::from_rgb_u8(17, 0, 0)),        // Pirosas
+        //(Color::from_rgb_u8(17, 34, 68), Color::from_rgb_u8(0, 5, 17)),        // Kékes
+        //(Color::from_rgb_u8(0, 0, 0), Color::from_rgb_u8(255, 255, 255)),     // Alapértelmezett B/W
+    };
+
+    let size: u32 = 16; // Egy kocka mérete pixelben
+    let full_size = size * 2;
+    let mut pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::new(full_size, full_size);
+    let mut pixels = pixel_buffer.make_mut_slice();
+
+    for y in 0..full_size {
+        for x in 0..full_size {
+            let is_color1 = (x < size && y < size) || (x >= size && y >= size);
+            let color = if is_color1 { c1.to_argb_u8() } else { c2.to_argb_u8() };            
+            pixels[(y * full_size + x) as usize] = Rgba8Pixel {
+                r: color.red, g: color.green, b: color.blue, a: color.alpha,
+            };
+        }
+    }
+    Image::from_rgba8(pixel_buffer)
 }
 
 fn on_down(viewer: &mut ImageViewer) {
@@ -515,27 +591,67 @@ fn on_minus(viewer: &mut ImageViewer) {
     viewer.review(true, false);
 }
 
-fn on_red_channel(viewer: &mut ImageViewer) {
+fn on_red_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     println!("on_red_channel");
-    viewer.color_settings.show_r = !viewer.color_settings.show_r;
+    //if no_set {
+    //    viewer.color_settings.show_r = !val;
+    //}
+    //else  {
+        viewer.color_settings.show_r = !viewer.color_settings.show_r;
+        if let Some(handle) = &viewer.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_red_checked(viewer.color_settings.show_r);
+            }
+        }
+    //}
     viewer.review(true, false);
 }
 
-fn on_green_channel(viewer: &mut ImageViewer) {
+fn on_green_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     println!("on_green_channel");
-    viewer.color_settings.show_g = !viewer.color_settings.show_g;
+    //if no_set {
+    //    viewer.color_settings.show_g = !val;
+    //}
+    //else  {
+        viewer.color_settings.show_g = !viewer.color_settings.show_g;
+        if let Some(handle) = &viewer.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_green_checked(viewer.color_settings.show_g);
+            }
+        }
+    //}
     viewer.review(true, false);
 }
 
-fn on_blue_channel(viewer: &mut ImageViewer) {
+fn on_blue_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     println!("on_blue_channel");
-    viewer.color_settings.show_b = !viewer.color_settings.show_b;
+    //if no_set {
+    //    viewer.color_settings.show_b = !val;
+    //}
+    //else  {
+        viewer.color_settings.show_b = !viewer.color_settings.show_b;
+        if let Some(handle) = &viewer.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_blue_checked(viewer.color_settings.show_b);
+            }
+        }
+    //}
     viewer.review(true, false);
 }
 
-fn on_invert_channels(viewer: &mut ImageViewer) {
+fn on_invert_channels(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     println!("on_invert_channels");
-    viewer.color_settings.invert = !viewer.color_settings.invert;
+    //if no_set {
+    //    viewer.color_settings.invert = !val;
+    //}
+    //else  {
+        viewer.color_settings.invert = !viewer.color_settings.invert;
+        if let Some(handle) = &viewer.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                ui.set_invert_checked(viewer.color_settings.invert);
+            }
+        }
+    //}
     viewer.review(true, false);
 }
 

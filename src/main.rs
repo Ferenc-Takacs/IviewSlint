@@ -14,9 +14,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::ops::{Add,Sub,Mul};
+use std::ops::{Add,Sub,Mul,Div,AddAssign,SubAssign,MulAssign};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pf32{ x: f32, y: f32, }
 impl Default for Pf32 { fn default() -> Self { Self { x: 0.0, y: 0.0 } } }
 impl Into<(f32,f32)> for Pf32 { fn into(self) -> (f32,f32) { ( self.x, self.y ) } }
@@ -28,18 +28,35 @@ impl Into<Pf32> for (u32,u32) { fn into(self) -> Pf32 { Pf32{ x:self.0 as f32, y
 impl Add for Pf32 { type Output = Self;
     fn add(self, a: Self) -> Self { Pf32{ x: self.x + a.x, y: self.y + a.y } }
 }
+impl AddAssign for Pf32 {
+    fn add_assign(&mut self, b: Self) { *self = Self { x: self.x + b.x, y: self.y + b.y, }; }
+}
 impl Sub for Pf32 { type Output = Self;
     fn sub(self, a: Self) -> Self { Pf32{ x: self.x - a.x, y: self.y - a.y } }
+}
+impl SubAssign for Pf32 {
+    fn sub_assign(&mut self, b: Self) { *self = Self { x: self.x - b.x, y: self.y - b.y, }; }
 }
 impl Mul<f32> for Pf32 { type Output = Self;
     fn mul(self, a: f32) -> Self { Pf32{ x: self.x * a, y: self.y * a } }
 }
+impl MulAssign<f32> for Pf32 {
+    fn mul_assign(&mut self, b: f32) { *self = Self { x: self.x * b, y: self.y * b, }; }
+}
 impl Mul for Pf32 { type Output = f32;
     fn mul(self, a: Self) -> f32 { self.x * a.x + self.y * a.y }
+}
+impl Div<f32> for Pf32 { type Output = Self;
+    fn div(self, a: f32) -> Self { Pf32{ x: self.x / a, y: self.y / a } }
+}
+impl Div for Pf32 { type Output = Pf32;
+    fn div(self, a: Self) -> Pf32 { Pf32{ x: self.x / a.x, y: self.y / a.y } }
 }
 impl Pf32 {
     fn hypot(self, b: Pf32) -> f32 { (self - b).length() }
     fn length( self ) -> f32 {  (self.x*self.x+self.y*self.y).sqrt() }
+    fn min( self, b: Pf32 ) -> Pf32 { Pf32{ x: self.x.min(b.x), y: self.y.min(b.y) } }
+    fn max( self, b: Pf32 ) -> Pf32 { Pf32{ x: self.x.max(b.x), y: self.y.max(b.y) } }
 }
 
 
@@ -76,8 +93,11 @@ pub struct ImageViewer {
     pub rgba_image: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     
     pub display_size: Pf32, 
+    pub window_frame: Pf32, // title, menu, padding, rendszer tálca
     pub window_size: Pf32, 
     pub image_size: Pf32, 
+    pub mouse_pos: Pf32,
+    pub mouse_zoom: bool,
     pub center: bool,
     pub show_info: bool,
     pub aktualis_offset: Pf32,
@@ -128,8 +148,11 @@ impl Default for ImageViewer {
             original_image: None,
             rgba_image: None,
             display_size: Pf32{x:1280.0, y:1024.0},
-            image_size: Pf32{x:800.0, y:600.0},
+            window_frame: Pf32{ x:10.0 , y:60.0 }, // title, menu, padding, rendszer tálca
             window_size: Pf32{x:800.0, y:600.0},
+            image_size: Pf32{x:800.0, y:600.0},
+            mouse_pos: Pf32{x:0.0, y:0.0},
+            mouse_zoom: false,
             center: true,
             show_info: false,
             aktualis_offset: Pf32::default(),

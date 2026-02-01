@@ -181,4 +181,7 @@ git clone https://github.com/Ferenc-Takacs/IView.git
 cd IView
 cargo run --release
 ```
+See this page for renderer options :
+https://docs.slint.dev/latest/docs/rust/slint/docs/cargo_features/
+
 ![IView preview](screenshots/preview.jpg)
