@@ -9,7 +9,7 @@ use crate::Pf32;
 
 use slint::{ComponentHandle,BackendSelector,Image,Color,SharedPixelBuffer,Rgba8Pixel};
 use crate::ImageState;
-//use slint::*;
+use crate::SlintColorSettings;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::ImageViewer;
@@ -23,15 +23,11 @@ pub fn file_callbacks(
         about_ui: AboutWindow,
         info_ui: InfoWindow,
         save_window_ui: SaveWindow,
-        state: Rc<RefCell<ImageViewer>>) {
+        state: Rc<RefCell<ImageViewer>>)
+{
     let ui = ui_weak.unwrap();    
     let state_copy = state.clone();
 
-    let settings_handle = settings_ui.as_weak();    
-    let about_handle = about_ui.as_weak();    
-    let info_handle = info_ui.as_weak();    
-    let save_window_handle = save_window_ui.as_weak();
-    
     {
 
         // startup setting
@@ -100,36 +96,49 @@ pub fn file_callbacks(
             viewer.use_gpu = false;
             viewer.gpu_tried_init = true;
         }
-        
+        viewer.settings_window = Some(settings_ui);
+        viewer.about_window = Some(about_ui);
+        viewer.info_window = Some(info_ui);
+        viewer.save_window = Some(save_window_ui);
     }
     
-    ui.on_show_color_settings(move || {
-        if let Some(s_ui) = settings_handle.upgrade() {
-            println!("on_show_color_settings");
-            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+    {
+        let value = state_copy.clone();
+        let viewer = value.borrow_mut();
+        if let Some(about_ui)  = &viewer.about_window {
+            let about_handle = about_ui.as_weak();    
+            ui.on_show_about(move || {
+                if let Some(s_ui) = about_handle.upgrade() {
+                    println!("on_show_about");
+                    s_ui.show().unwrap(); // Megjeleníti a független ablakot
+                }
+            });
         }
-    });
-    
-    ui.on_show_about(move || {
-        if let Some(s_ui) = about_handle.upgrade() {
-            println!("on_show_about");
-            s_ui.show().unwrap(); // Megjeleníti a független ablakot
-        }
-    });
+    }
 
-    ui.on_show_info(move || {
-        if let Some(s_ui) = info_handle.upgrade() {
-            println!("on_show_info");
-            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+    {
+        let value = state_copy.clone();
+        let viewer = value.borrow_mut();
+        if let Some(info_ui)  = &viewer.info_window {
+            let info_handle = info_ui.as_weak();    
+            ui.on_show_info(move || {
+                if let Some(s_ui) = info_handle.upgrade() {
+                    println!("on_show_info");
+                    s_ui.show().unwrap(); // Megjeleníti a független ablakot
+                }
+            });
         }
-    });
+    }
 
-    /*ui.on_show_save_window(move || {
+    /*
+    let save_window_handle = save_window_ui.as_weak();
+    ui.on_show_save_window(move || {
         if let Some(s_ui) = save_window_handle.upgrade() {
             println!("on_show_save_window");
             s_ui.show().unwrap(); // Megjeleníti a független ablakot
         }
-    });*/
+    });
+    */
 
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -271,10 +280,10 @@ pub fn file_callbacks(
         on_invert_channels(&mut value.borrow_mut(), i, true);
     });
 
-    /*let value = state_copy.clone();
-    ui.on_color_setting(move || {
+    let value = state_copy.clone();
+    ui.on_color_settings(move || {
         on_color_setting(&mut value.borrow_mut());
-    });*/
+    });
 
     //let value = state_copy.clone();
     //ui.on_about(move || {
@@ -320,9 +329,9 @@ pub fn file_callbacks(
         viewer.mouse_pos = Pf32{ x: posx, y: posy };
     });
     
-    let value = state_copy.clone();
+    //let value = state_copy.clone();
     ui.on_mouse_off(move || {
-        let mut viewer = value.borrow_mut();
+        //let mut viewer = value.borrow_mut();
     });
     
     let ui_weak_keys = ui.as_weak();
@@ -407,7 +416,6 @@ pub fn file_callbacks(
             let _ = ui.window().hide();
         }
     });
-    
 }
 
 
@@ -662,10 +670,6 @@ fn on_invert_channels(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     viewer.review(true, false);
 }
 
-fn on_color_setting(viewer: &mut ImageViewer) {
-    println!("on_color_setting");
-    // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
-}
 
 //let value = state_copy.clone();
 //ui.on_about(move || {
@@ -695,4 +699,33 @@ fn on_forward_animation(viewer: &mut ImageViewer) {
 
 fn on_loop_animation(viewer: &mut ImageViewer) {
     println!("on_loop_animation");
+}
+
+fn on_color_setting(viewer: &mut ImageViewer) {
+    println!("on_color_setting");
+    if let Some(settings_ui)  = &viewer.settings_window {
+        let settings_handle = settings_ui.as_weak();    
+        if let Some(s_ui) = settings_handle.upgrade() {
+            let colset = SlintColorSettings{
+                gamma: viewer.color_settings.gamma,
+                contrast: viewer.color_settings.contrast,
+                brightness: viewer.color_settings.brightness,
+                hue_shift: viewer.color_settings.hue_shift,      // -180.0 .. 180.0 (fok)
+                saturation: viewer.color_settings.saturation,     // -1.0 .. 1.0
+                show_r: viewer.color_settings.show_r,
+                show_g: viewer.color_settings.show_g,
+                show_b: viewer.color_settings.show_b,
+                invert: viewer.color_settings.invert,
+                sharpen_amount: viewer.color_settings.sharpen_amount, // -1.0 .. 5.0 // realy image setting
+                sharpen_radius: viewer.color_settings.sharpen_radius, // 0.2 .. 3.0 // realy image setting
+                rotate: viewer.color_settings.rotate.to_u8() as i32, // realy image setting
+                oklab: viewer.color_settings.oklab,
+            };
+            println!("on_show_color_settings");
+            s_ui.set_colset(colset);
+            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+        }
+    }
+    
+    // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
 }

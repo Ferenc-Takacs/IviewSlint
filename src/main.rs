@@ -39,6 +39,11 @@ fn main() -> Result<(), slint::PlatformError> {
 
 pub struct ImageViewer {
     pub ui_handle: Option<slint::Weak<MainWindow>>,
+    pub settings_window: Option<ColorCorrectionWindow>,
+    pub about_window: Option<AboutWindow>,
+    pub info_window: Option<InfoWindow>,
+    pub save_window: Option<SaveWindow>,
+    
     pub image_full_path: Option<PathBuf>,
     pub file_meta: Option<fs::Metadata>,
     pub exif: Option<ExifBlock>,
@@ -97,6 +102,10 @@ impl Default for ImageViewer {
     fn default() -> Self {
         Self {
             ui_handle : None,
+            settings_window: None,
+            about_window: None,
+            info_window: None,
+            save_window: None,
             image_full_path: None,
             file_meta: None,
             exif: None,

@@ -1,5 +1,5 @@
 
-import { VerticalBox, HorizontalBox, Button, ScrollView, Slider } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, Button, ScrollView, Slider, AboutSlint } from "std-widgets.slint";
 
 export struct RecentFileSlint {
     path: string,
@@ -16,34 +16,152 @@ export struct ImageState {
     window_title: string,
 }
 
+export struct SlintColorSettings {
+    gamma: float,
+    contrast: float,
+    brightness: float,
+    hue_shift: float,      // -180.0 .. 180.0 (fok)
+    saturation: float,     // -1.0 .. 1.0
+    show_r: bool,
+    show_g: bool,
+    show_b: bool,
+    invert: bool,
+    sharpen_amount: float, // -1.0 .. 5.0 // realy image setting
+    sharpen_radius: float, // 0.2 .. 3.0 // realy image setting
+    rotate: int, // realy image setting
+    oklab: bool,
+}
+
 export component ColorCorrectionWindow inherits Window {
     title: "Color Correction";
-    width: 350px;
+    width: 330px;
     height: 500px;
-    background: #2a2a2a;
+    //background: #2a2a2a;
     
-    // Itt ugyanúgy használhatod a Slidert és a többi widgetet
-    in-out property <float> gamma: 1.0;
-    callback settings_changed(float);
+    in-out property <SlintColorSettings> colset;
+    callback changed();
+    callback original();
 
     VerticalLayout {
         padding: 20px;
         spacing: 15px;
-        Text { text: "Képkorrekció"; font-size: 16px; }
-        
-        // Gamma példa
+        HorizontalLayout{
+            Text { text: "Global Correction";  }
+            Text { text: "                 ";  }
+            Text { text: "Channels:";  }
+            Rectangle { Text { text: "R"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_r = !root.colset.show_r; root.changed(); } } } background: root.colset.show_r ? #88c : #888; }
+            Rectangle { Text { text: "G"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_g = !root.colset.show_g; root.changed(); } } } background: root.colset.show_g ? #88c : #888; }
+            Rectangle { Text { text: "B"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_b = !root.colset.show_b; root.changed(); } } } background: root.colset.show_b ? #88c : #888; }
+            Rectangle { Text { text: "INV"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.invert = !root.colset.invert; root.changed(); } } } background: root.colset.invert ? #88c : #888; }
+        }
         VerticalLayout {
-            Text { text: "Gamma: " + (round(root.gamma * 100) / 100); }
             Slider {
-                value: root.gamma;
-                minimum: 0.5; maximum: 3.0;
-                changed => { 
-                    root.gamma = self.value;
-                    root.settings_changed(self.value);
+                value: root.colset.gamma;
+                minimum: 0.1; maximum: 5.0;
+                changed => {
+                    root.colset.gamma = self.value;
+                    root.changed();
                 }
             }
+            Text { text: "Gamma: " + (round(root.colset.gamma * 1000) / 1000); }
         }
-        // ... többi csúszka
+        VerticalLayout {
+            Slider {
+                value: root.colset.contrast;
+                minimum: -1.0; maximum: 1.0;
+                changed => { 
+                    root.colset.contrast = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Contrast: " + (round(root.colset.contrast * 1000) / 1000); }
+        }
+        HorizontalLayout{
+            Text { text: "Color Correction Algorithm:";  }
+            Rectangle { Text { text: "Oklab (Natural)"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.oklab = true; root.changed(); } } } background: root.colset.oklab ? #88c : #888; }
+            Rectangle { Text { text: "HSV (Classic)"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.oklab = false; root.changed(); } } } background: root.colset.oklab ? #888 : #88c; }
+        }
+        VerticalLayout {
+            Slider {
+                value: root.colset.hue_shift;
+                minimum: -180.0; maximum: 180.0;
+                changed => { 
+                    root.colset.hue_shift = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Hue Shift: " + (round(root.colset.hue_shift * 100) / 100); }
+        }
+        VerticalLayout {
+            Slider {
+                value: root.colset.saturation;
+                minimum: -1.0; maximum: 1.0;
+                changed => { 
+                    root.colset.saturation = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Saturation: " + (round(root.colset.saturation * 1000) / 1000); }
+        }
+        VerticalLayout {
+            Slider {
+                value: root.colset.brightness;
+                minimum: -1.0; maximum: 1.0;
+                changed => { 
+                    root.colset.brightness = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Brightness: " + (round(root.colset.brightness * 1000) / 1000); }
+        }
+        Text{ text: "Sharpen (Amount > 0} && Blur (Amount < 0 )"; }
+        VerticalLayout {
+            Slider {
+                value: root.colset.sharpen_amount;
+                minimum: -1.0; maximum: 9.0;
+                changed => { 
+                    root.colset.sharpen_amount = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Amount: " + (round(root.colset.sharpen_amount * 1000) / 1000); }
+        }
+        VerticalLayout {
+            Slider {
+                value: root.colset.sharpen_radius;
+                minimum: 0.2; maximum: 7.0;
+                changed => { 
+                    root.colset.sharpen_radius = self.value;
+                    root.changed();
+                }
+            }
+            Text { text: "Radius: " + (round(root.colset.sharpen_radius * 1000) / 1000); }
+        }
+        HorizontalLayout{
+            Rectangle { Text { text: "Reset All Settings"; } TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.gamma = 1.0;
+                root.colset.contrast = 0.0;
+                root.colset.brightness = 0.0;
+                root.colset.hue_shift = 0.0;
+                root.colset.saturation = 0.0;
+                root.colset.show_r = true;
+                root.colset.show_g = true;
+                root.colset.show_b = true;
+                root.colset.invert = false;
+                root.colset.sharpen_amount = 0.0;
+                root.colset.sharpen_radius = 0.2;
+                root.colset.rotate = 0;
+                root.colset.oklab = true;
+                root.changed();
+            } } }
+            Rectangle { Text { text: "Show Original)";  } TouchArea { mouse_cursor: pointer; clicked => { root.changed(); } } }
+        }
     }
 }
 
@@ -55,7 +173,7 @@ export component InfoWindow inherits Window {
     
     // Itt ugyanúgy használhatod a Slidert és a többi widgetet
     in-out property <float> gamma: 1.0;
-    callback settings_changed(float);
+    callback changed(float);
 
     VerticalLayout {
         padding: 20px;
@@ -70,7 +188,7 @@ export component InfoWindow inherits Window {
                 minimum: 0.5; maximum: 3.0;
                 changed => { 
                     root.gamma = self.value;
-                    root.settings_changed(self.value);
+                    root.changed(self.value);
                 }
             }
         }
@@ -86,7 +204,7 @@ export component SaveWindow inherits Window {
     
     // Itt ugyanúgy használhatod a Slidert és a többi widgetet
     in-out property <float> gamma: 1.0;
-    callback settings_changed(float);
+    callback changed(float);
 
     VerticalLayout {
         padding: 20px;
@@ -101,7 +219,7 @@ export component SaveWindow inherits Window {
                 minimum: 0.5; maximum: 3.0;
                 changed => { 
                     root.gamma = self.value;
-                    root.settings_changed(self.value);
+                    root.changed(self.value);
                 }
             }
         }
@@ -139,6 +257,7 @@ export component AboutWindow inherits Window {
                     text: "© 2026 Ferenc Takács";
                     horizontal-alignment: center;
                 }
+                AboutSlint {}
             }
         }
     }
@@ -231,7 +350,7 @@ export component MainWindow inherits Window {
             }
             MenuItem {
                 title: @tr("Color Setting (C)");
-                activated => { show_color_settings(); }
+                activated => { color_settings(); }
             }
             Menu {
                 title: @tr("Change Background (D)");
@@ -542,6 +661,10 @@ export component MainWindow inherits Window {
     callback mouse_move(length, length);
     callback mouse_pos(length, length);
     callback mouse_off();
+    callback show_about();
+    callback show_info();
+    //callback show_color_settings();
+    callback color_settings();
     callback open_recent(string);
     callback open_here_recent(string);
     callback save_recent(string);
@@ -554,7 +677,6 @@ export component MainWindow inherits Window {
     callback right();
     callback plus(length);
     callback minus(length);
-    callback show_color_settings();
     callback open_file();
     callback reopen_file();
     callback save_file();
@@ -564,7 +686,6 @@ export component MainWindow inherits Window {
     callback paste_image();
     callback change_image();
     callback change_view();
-    callback show_about();
     callback prev_image();
     callback next_image();
     callback play_animation();
@@ -572,7 +693,6 @@ export component MainWindow inherits Window {
     callback back_animation();
     callback forward_animation();
     callback loop_animation();
-    callback show_info();
     callback exit();
     callback key_pressed_event(string, bool, bool, bool) -> bool;
     
