@@ -1,5 +1,5 @@
 
-import { VerticalBox, HorizontalBox, Button, ScrollView, Slider, AboutSlint } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, Button, ScrollView, Slider, AboutSlint, StandardTableView } from "std-widgets.slint";
 
 export struct RecentFileSlint {
     path: string,
@@ -9,25 +9,16 @@ export struct RecentFileSlint {
 export struct ImageState {
     window_width: length,
     window_height: length,
-    offset_x: length,
-    offset_y: length,
     zoom_level: float,
     current_image: image,
     window_title: string,
 }
 
 export struct SlintColorSettings {
-    gamma: float,
-    contrast: float,
-    brightness: float,
-    hue_shift: float,      // -180.0 .. 180.0 (fok)
-    saturation: float,     // -1.0 .. 1.0
     show_r: bool,
     show_g: bool,
     show_b: bool,
     invert: bool,
-    sharpen_amount: float, // -1.0 .. 5.0 // realy image setting
-    sharpen_radius: float, // 0.2 .. 3.0 // realy image setting
     rotate: int, // realy image setting
     oklab: bool,
 }
@@ -38,9 +29,17 @@ export component ColorCorrectionWindow inherits Window {
     height: 500px;
     //background: #2a2a2a;
     
+    in-out property <float> gamma;
+    in-out property <float> contrast;
+    in-out property <float> brightness;
+    in-out property <float> hue_shift;
+    in-out property <float> saturation;
+    in-out property <float> sharpen_amount;
+    in-out property <float> sharpen_radius;
     in-out property <SlintColorSettings> colset;
     callback changed();
-    callback original();
+    callback hide();
+    callback original(bool);
 
     VerticalLayout {
         padding: 20px;
@@ -49,150 +48,228 @@ export component ColorCorrectionWindow inherits Window {
             Text { text: "Global Correction";  }
             Text { text: "                 ";  }
             Text { text: "Channels:";  }
-            Rectangle { Text { text: "R"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.show_r = !root.colset.show_r; root.changed(); } } } background: root.colset.show_r ? #88c : #888; }
-            Rectangle { Text { text: "G"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.show_g = !root.colset.show_g; root.changed(); } } } background: root.colset.show_g ? #88c : #888; }
-            Rectangle { Text { text: "B"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.show_b = !root.colset.show_b; root.changed(); } } } background: root.colset.show_b ? #88c : #888; }
-            Rectangle { Text { text: "INV"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.invert = !root.colset.invert; root.changed(); } } } background: root.colset.invert ? #88c : #888; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "R"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_r = !root.colset.show_r; root.changed(); } } } background: root.colset.show_r ? #48d : #ddd; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "G"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_g = !root.colset.show_g; root.changed(); } } } background: root.colset.show_g ? #48d : #ddd; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "B"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.show_b = !root.colset.show_b; root.changed(); } } } background: root.colset.show_b ? #48d : #ddd; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "INV"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.invert = !root.colset.invert; root.changed(); } } } background: root.colset.invert ? #48d : #ddd; }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.gamma;
+                value <=> root.gamma;
                 minimum: 0.1; maximum: 5.0;
                 changed => {
-                    root.colset.gamma = self.value;
+                    //root.gamma = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Gamma: " + (round(root.colset.gamma * 1000) / 1000); }
+            Text { text: "Gamma: " + (round(root.gamma * 1000) / 1000); }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.contrast;
+                value <=> root.contrast;
                 minimum: -1.0; maximum: 1.0;
                 changed => { 
-                    root.colset.contrast = self.value;
+                    //root.contrast = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Contrast: " + (round(root.colset.contrast * 1000) / 1000); }
+            Text { text: "Contrast: " + (round(root.contrast * 1000) / 1000); }
         }
         HorizontalLayout{
             Text { text: "Color Correction Algorithm:";  }
-            Rectangle { Text { text: "Oklab (Natural)"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.oklab = true; root.changed(); } } } background: root.colset.oklab ? #88c : #888; }
-            Rectangle { Text { text: "HSV (Classic)"; TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.oklab = false; root.changed(); } } } background: root.colset.oklab ? #888 : #88c; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "Oklab (Natural)"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.oklab = true; root.changed(); } } } background: root.colset.oklab ? #48d : #ddd; }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "HSV (Classic)"; TouchArea { mouse_cursor: pointer; clicked => {
+                root.colset.oklab = false; root.changed(); } } } background: root.colset.oklab ? #ddd : #48d; }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.hue_shift;
+                value <=> root.hue_shift;
                 minimum: -180.0; maximum: 180.0;
                 changed => { 
-                    root.colset.hue_shift = self.value;
+                    root.hue_shift = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Hue Shift: " + (round(root.colset.hue_shift * 100) / 100); }
+            Text { text: "Hue Shift: " + (round(root.hue_shift * 100) / 100); }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.saturation;
+                value <=> root.saturation;
                 minimum: -1.0; maximum: 1.0;
                 changed => { 
-                    root.colset.saturation = self.value;
+                    root.saturation = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Saturation: " + (round(root.colset.saturation * 1000) / 1000); }
+            Text { text: "Saturation: " + (round(root.saturation * 1000) / 1000); }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.brightness;
+                value <=> root.brightness;
                 minimum: -1.0; maximum: 1.0;
                 changed => { 
-                    root.colset.brightness = self.value;
+                    root.brightness = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Brightness: " + (round(root.colset.brightness * 1000) / 1000); }
+            Text { text: "Brightness: " + (round(root.brightness * 1000) / 1000); }
         }
-        Text{ text: "Sharpen (Amount > 0} && Blur (Amount < 0 )"; }
+        Text{ text: "Sharpen (Amount > 0) && Blur (Amount < 0 )"; }
         VerticalLayout {
             Slider {
-                value: root.colset.sharpen_amount;
+                value <=> root.sharpen_amount;
                 minimum: -1.0; maximum: 9.0;
                 changed => { 
-                    root.colset.sharpen_amount = self.value;
+                    root.sharpen_amount = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Amount: " + (round(root.colset.sharpen_amount * 1000) / 1000); }
+            Text { text: "Amount: " + (round(root.sharpen_amount * 1000) / 1000); }
         }
         VerticalLayout {
             Slider {
-                value: root.colset.sharpen_radius;
+                value <=> root.sharpen_radius;
                 minimum: 0.2; maximum: 7.0;
                 changed => { 
-                    root.colset.sharpen_radius = self.value;
+                    root.sharpen_radius = self.value;
                     root.changed();
                 }
             }
-            Text { text: "Radius: " + (round(root.colset.sharpen_radius * 1000) / 1000); }
+            Text { text: "Radius: " + (round(root.sharpen_radius * 1000) / 1000); }
         }
         HorizontalLayout{
-            Rectangle { Text { text: "Reset All Settings"; } TouchArea { mouse_cursor: pointer; clicked => {
-                root.colset.gamma = 1.0;
-                root.colset.contrast = 0.0;
-                root.colset.brightness = 0.0;
-                root.colset.hue_shift = 0.0;
-                root.colset.saturation = 0.0;
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "Reset All Settings"; } TouchArea { mouse_cursor: pointer; clicked => {
+                root.gamma = 1.0;
+                root.contrast = 0.0;
+                root.brightness = 0.0;
+                root.hue_shift = 0.0;
+                root.saturation = 0.0;
                 root.colset.show_r = true;
                 root.colset.show_g = true;
                 root.colset.show_b = true;
                 root.colset.invert = false;
-                root.colset.sharpen_amount = 0.0;
-                root.colset.sharpen_radius = 0.2;
+                root.sharpen_amount = 0.0;
+                root.sharpen_radius = 0.2;
                 root.colset.rotate = 0;
                 root.colset.oklab = true;
                 root.changed();
             } } }
-            Rectangle { Text { text: "Show Original)";  } TouchArea { mouse_cursor: pointer; clicked => { root.changed(); } } }
+            Rectangle { border-width: 1px; border-color: #444; Text { text: "Show Original)";  } TouchArea { mouse_cursor: pointer; clicked => { root.changed(); } } }
+        }
+    }
+    forward_focus: key_handler;
+    key_handler := FocusScope {
+        key_pressed(event) => {
+            if(event.modifiers.alt && event.modifiers.shift ){ root.original(true); }
+            if(event.modifiers.alt){
+            }
+            else {
+                if( event.modifiers.control ) {
+                    if (event.text == "r" ) { root.colset.show_r = !root.colset.show_r; root.changed(); return accept; }
+                    if (event.text == "g" ) { root.colset.show_g = !root.colset.show_g; root.changed(); return accept; }
+                    if (event.text == "b" ) { root.colset.show_b = !root.colset.show_b; root.changed(); return accept; }
+                    if (event.text == "i" ) { root.colset.invert = !root.colset.invert; root.changed(); return accept; }
+                    if (event.text == Key.LeftArrow ) { root.colset.rotate = Math.mod(root.colset.rotate+3,4); root.changed(); return accept; }
+                    if (event.text == Key.RightArrow ) { root.colset.rotate = Math.mod(root.colset.rotate+1,4); root.changed(); return accept; }
+                    if (event.text == Key.UpArrow ) { root.colset.rotate = Math.mod(root.colset.rotate+2,4); root.changed(); return accept; }
+                    if (event.text == Key.DownArrow ) { root.colset.rotate = 0; root.changed(); return accept; }
+                }
+                else {
+                    if (event.text == "c" ) { root.hide(); return accept; }
+                }
+            }
+            reject
+        }
+        key_released(event) => {
+            if (!event.modifiers.control || !event.modifiers.shift) { root.original(false); }
+            reject
         }
     }
 }
 
 export component InfoWindow inherits Window {
     title: "Image Information";
-    width: 350px;
-    height: 500px;
-    background: #2a2a2a;
+    width: 250px;
+    height: 180px;
     
-    // Itt ugyanúgy használhatod a Slidert és a többi widgetet
-    in-out property <float> gamma: 1.0;
-    callback changed(float);
+    in property <string> filename: "";
+    in property <string> imagesize: "";
+    in property <string> filesize: "";
+    in property <string> filetime: "";
+    in property <string> resolution: "";
+    in property <bool> exif: false;
+    in property <bool> gps: false;
+    in property <string> created: "";
+    in property <string> model: "";
+    in property <string> location: "";
+    in-out property <string> map_url;
+    callback go_map();
+    callback hide();
 
     VerticalLayout {
-        padding: 20px;
-        spacing: 15px;
-        Text { text: "Képkorrekció"; font-size: 16px; }
-        
-        // Gamma példa
-        VerticalLayout {
-            Text { text: "Gamma: " + (round(root.gamma * 100) / 100); }
-            Slider {
-                value: root.gamma;
-                minimum: 0.5; maximum: 3.0;
-                changed => { 
-                    root.gamma = self.value;
-                    root.changed(self.value);
+        HorizontalLayout{ height: 20px;
+            Text { text: "Name of File:"; width: 80px; }
+            Text { text <=> root.filename; }
+        }
+        HorizontalLayout{ height: 20px;
+            Text { text: "Size of image:"; width: 80px; }
+            Text { text <=> root.imagesize; }
+        }
+        HorizontalLayout{ height: 20px;
+            Text { text: "Size of file:"; width: 80px; }
+            Text { text <=> root.filesize; }
+        }
+        HorizontalLayout{ height: 20px;
+            Text { text: "Time of file:"; width: 80px; }
+            Text { text <=> root.filetime; }
+        }
+        if( resolution!="" ) : VerticalLayout { 
+        HorizontalLayout{ height: 20px;
+            Text { text: "Resolution:"; width: 80px; }
+            Text { text <=> root.resolution; }
+        }
+        }
+        if(exif) : VerticalLayout {
+        HorizontalLayout{ height: 20px;
+            Text { text: "Created:"; width: 80px; }
+            Text { text <=> root.created; }
+        }
+        HorizontalLayout{ height: 20px;
+            Text { text: "Machine:"; width: 80px; }
+            Text { text <=> root.model; }
+        }
+        if(gps) : VerticalLayout {
+        HorizontalLayout{ height: 20px;
+            Text { text: "GeoLocation:"; width: 80px; }
+            Text { text <=> root.location; }
+        }
+        HorizontalLayout{ height: 20px;
+            Text { text: "Map:"; width: 80px; }
+            Text { text: "Open in browser 🌍"; color: blue; TouchArea { clicked => { root.go_map(); } }}
+        }
+        }
+        }
+    }
+    forward_focus: key_handler;
+    key_handler := FocusScope {
+        key_pressed(event) => {
+            if(event.modifiers.alt){
+            }
+            else {
+                if( event.modifiers.control ) {
+                }
+                else {
+                    if (event.text == "i" ) { root.hide(); return accept; }
+                    if (event.text == Key.Escape ) { root.hide(); return accept; }
                 }
             }
+            reject
         }
-        // ... többi csúszka
     }
 }
 
@@ -241,7 +318,7 @@ export component AboutWindow inherits Window {
             background: white;
             VerticalLayout {
                 Text {
-                    text: "IviewSlint v1.0";
+                    text: "Iview Image Viewer v1.0";
                     horizontal-alignment: center;
                     stroke-width: 1px;
                     stroke: lightblue;
@@ -257,7 +334,7 @@ export component AboutWindow inherits Window {
                     text: "© 2026 Ferenc Takács";
                     horizontal-alignment: center;
                 }
-                AboutSlint {}
+                AboutSlint { width: 100.0 * 1px; }
             }
         }
     }
@@ -346,7 +423,7 @@ export component MainWindow inherits Window {
             title: @tr("Option");
             MenuItem {
                 title: @tr("Info (I)");
-                activated => { show_info(); }
+                activated => { info_clicked(); }
             }
             MenuItem {
                 title: @tr("Color Setting (C)");
@@ -592,8 +669,9 @@ export component MainWindow inherits Window {
             
                 viewport-width:  img.source.width  * root.img_state.zoom_level * 1px;
                 viewport-height: img.source.height * root.img_state.zoom_level * 1px;
-                viewport-x: root.img_state.offset_x ;
-                viewport-y: root.img_state.offset_y ;
+                viewport-x <=> root.offset_x ;
+                viewport-y <=> root.offset_y ;
+                mouse-drag-pan-enabled: true;
 
                 img := Image {
                     source: root.img_state.current_image;
@@ -642,6 +720,8 @@ export component MainWindow inherits Window {
             current_image: @image-url(""), // Ez üres képet eredményez
             window_title: "iViewer"
         };
+    in-out property <length> offset_x;
+    in-out property <length> offset_y;
     in-out property <image> checker_tile;
     
     private property <bool> control;
@@ -662,7 +742,7 @@ export component MainWindow inherits Window {
     callback mouse_pos(length, length);
     callback mouse_off();
     callback show_about();
-    callback show_info();
+    callback info_clicked();
     //callback show_color_settings();
     callback color_settings();
     callback open_recent(string);
@@ -714,6 +794,9 @@ export component MainWindow inherits Window {
             reject
         }
     }
+    /*public function grab_keyboard_focus() {
+        key_handler.focus(); 
+    }*/
 
 }
 

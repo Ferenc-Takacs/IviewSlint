@@ -6,7 +6,7 @@ use crate::ImageViewer;
 use crate::colors::*;
 use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel, ComponentHandle};
 use crate::Pf32;
-use image::math::Rect;
+//use image::math::Rect;
 use crate::ImageState;
 
 // Segédfüggvény a vágólapon lévő kép kimentéséhez egy ideiglenes fájlba
@@ -170,28 +170,27 @@ impl ImageViewer {
 
     fn sizing_window(&mut self, slint_img: slint::Image){
 
-        let mut need_set = false;
-        let mut inner_size: Pf32 = Default::default();
-        let mut pos: Pf32 = Default::default();
-        let mut off = Pf32 { x: 0.0, y: 0.0 };
-
-        let mut inn : Pf32 = Default::default();
-        let regi_nagyitas = self.magnify;
-        let old_window_size = self.image_size * self.magnify;
+        let old_magnify = self.magnify;
+        let old_size = self.image_size * old_magnify;
+        let mut old_offset = self.aktualis_offset;
+        if let Some(handle) = &self.ui_handle {
+            if let Some(ui) = handle.upgrade() {
+                old_offset.x = ui.get_offset_x();
+                old_offset.y = ui.get_offset_y();
+            }
+        }
         let display_size_netto = self.display_size - self.window_frame;
         let mut bigger = 1.0;
-        //println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?} ", self.magnify, old_window_size, self.display_size, self.window_frame, self.want_magnify, self.change_magnify, display_size_netto);
+        
         if self.want_magnify == -1.0 { // set size to fit
-            let ratio = display_size_netto / self.image_size;
+            let ratio = display_size_netto / self.image_size; // divide by tags
             self.magnify = ratio.x.min(ratio.y);
 
             if !self.rgba_image.is_some() {
-                self.magnify /= 2.0; // empty window
+                self.magnify *= 0.5; // empty window
             }
-
-            let round_ = if self.magnify < 1.0 { 0.0 } else { 0.5 };
-            self.magnify = (((self.magnify * 20.0 + round_) as i32) as f32) / 20.0;
-            need_set = true;
+            //let round_ = if self.magnify < 1.0 { 0.0 } else { 0.5 };
+            self.magnify = (((self.magnify * 20.0 ) as i32) as f32) / 20.0;
         }
 
         if self.change_magnify != 0.0 || self.want_magnify > 0.009 {
@@ -205,67 +204,49 @@ impl ImageViewer {
                 else if self.magnify >= 4.0 {
                     self.change_magnify *= 2.0;
                 }
-                self.magnify = (regi_nagyitas * 1.0 + (0.05 * self.change_magnify)).clamp(0.1, 10.0);
+                self.magnify = (old_magnify * 1.0 + (0.05 * self.change_magnify)).clamp(0.1, 10.0);
                 self.magnify = (((self.magnify * 100.0 + 0.5) as i32) as f32) / 100.0; // round
             }
-
-            if self.magnify != regi_nagyitas {
-                bigger = self.magnify / regi_nagyitas;
-                need_set = true;
-            }
+            bigger = self.magnify / old_magnify;
         }
-        //if need_set {
-            //let mut corr = Pf32 { x: 4.0, y: 26.0 };
-            inn = self.image_size * self.magnify;
-            inn = inn.min(display_size_netto);
-            inner_size = inn;// + corr;
-            println!("{:?} {:?}", inner_size, inn);
-            pos = if self.center
-                { (display_size_netto - inn) * 0.5 }
-                else { off };
-        //}
-
-
-        let current_offset = self.aktualis_offset;
+        
+        let zero = Pf32 { x: 0.0, y: 0.0 };
+        let mut off = Pf32 { x: 0.0, y: 0.0 };
         let new_size = self.image_size * self.magnify;
+        let inner_size = new_size.min(display_size_netto);
+        let pos = if self.center { (display_size_netto - inner_size) * 0.5 } else { zero };
 
-        //if bigger != 1.0 || self.want_magnify > 0.009 {
-            
-            let mut pointer = if self.mouse_zoom {
-                    self.mouse_pos
-                } else {
-                    self.window_size * 0.5
-                };
-            pointer.x = pointer.x.clamp(0.0, old_window_size.x);
-            pointer.y = pointer.y.clamp(0.0, old_window_size.y);
-
-            let mut offset = current_offset; // <= 0
-            offset += pointer;
-            offset *= bigger;
-            offset -= pointer;
-
-            if new_size.x > display_size_netto.x {
-                // need horizontal scrollbar
-                off.x = offset.x;
-            }
-            if new_size.y > display_size_netto.y {
-                // need vertical scrollbar
-                off.y = offset.y;
-            }
+        
+        //if new_size.x > inner_size.x || new_size.y > inner_size.y {
+            //if bigger != 1.0 || self.want_magnify > 0.009 {
+                
+                let mut pointer = if self.mouse_zoom {
+                        self.mouse_pos
+                    } else {
+                        old_size * 0.5
+                    };
+                let rel_pos = (old_offset + pointer).max(zero);
+                off = (rel_pos - pointer * bigger).min(zero);
+                if new_size.x == inner_size.x { off.x = 0.0; } 
+                if new_size.y == inner_size.y { off.y = 0.0; } 
+                //println!("{:?} {:?} {:?} ",old_offset,off, pointer);
+            //}
         //}
 
-        //if need_set || current_offset != off {
+        //if need_set || old_offset != off {
             if let Some(handle) = &self.ui_handle {
                 if let Some(ui) = handle.upgrade() {
-                    println!("{:?} {:?} {:?} {:?} {:?} ", inner_size, pos, off, self.magnify, self.center);
+                    //println!("{:?} {:?} {:?} {:?} {:?} ", inner_size, pos, off, self.magnify, self.center);
                     let title: slint::SharedString = format!("iViewer - {}. {}{}   {}",
                         self.actual_index, self.image_name, if self.modified {'*'} else {' '},  self.magnify).into();
-                    ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
+                    if bigger != 1.0 || self.want_magnify == -1.0 {
+                        ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
+                    }
+                    ui.set_offset_x(off.x);
+                    ui.set_offset_y(off.y);
                     let new_state = ImageState {
                         window_width: inner_size.x,
                         window_height: inner_size.y,
-                        offset_x: off.x,
-                        offset_y: off.x,
                         zoom_level: self.magnify,
                         current_image: slint_img,
                         window_title: title,

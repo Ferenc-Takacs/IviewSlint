@@ -12,7 +12,8 @@ use crate::exif_my::*;
 use crate::colors::*;
 use crate::image_processing::*;
 use crate::ImageViewer;
-use crate::Pf32;
+use crate::file_callbacks::*;
+//use crate::Pf32;
 use crate::RecentFileSlint;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
@@ -1003,6 +1004,9 @@ impl ImageViewer {
                 //ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!( "IView - {}. {}", self.actual_index, file_name )));
             }
 
+            if self.show_info {
+                on_info_clicked(self, true);
+            }
             self.review(self.same_correction_open, false);
         }
     }

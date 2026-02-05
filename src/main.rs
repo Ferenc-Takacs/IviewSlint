@@ -43,6 +43,8 @@ pub struct ImageViewer {
     pub about_window: Option<AboutWindow>,
     pub info_window: Option<InfoWindow>,
     pub save_window: Option<SaveWindow>,
+    pub show_settings: bool,
+    pub show_info: bool,
     
     pub image_full_path: Option<PathBuf>,
     pub file_meta: Option<fs::Metadata>,
@@ -69,7 +71,6 @@ pub struct ImageViewer {
     pub mouse_pos: Pf32,
     pub mouse_zoom: bool,
     pub center: bool,
-    pub show_info: bool,
     pub aktualis_offset: Pf32,
     pub sort: SortDir,
     pub save_original: bool,
@@ -106,6 +107,9 @@ impl Default for ImageViewer {
             about_window: None,
             info_window: None,
             save_window: None,
+            show_settings: false,
+            show_info: false,
+            
             image_full_path: None,
             file_meta: None,
             exif: None,
@@ -128,7 +132,6 @@ impl Default for ImageViewer {
             mouse_pos: Pf32{x:0.0, y:0.0},
             mouse_zoom: false,
             center: true,
-            show_info: false,
             aktualis_offset: Pf32::default(),
             sort: SortDir::Name,
             save_original: false, //always set before use

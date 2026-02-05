@@ -50,16 +50,16 @@ pub fn file_callbacks(
         let new_state = ImageState {
             window_width: viewer.window_size.x,     // length -> f32
             window_height: viewer.window_size.y,    // length -> f32
-            offset_x: 0.0,                // length -> f32
-            offset_y: 0.0,                // length -> f32
             zoom_level: viewer.magnify,       // float -> f32
             current_image: slint::Image::default(),       // image -> slint::Image
             window_title: "iViewer".into(),            // string -> slint::SharedString
         };
         ui.set_img_state(new_state);
+        ui.set_offset_x(0.0);
+        ui.set_offset_y(0.0);
         ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
         
-        println!("{:?}",display_info);
+        //println!("{:?}",display_info);
         viewer.load_settings();
         
         if bkg > 3 {
@@ -87,20 +87,101 @@ pub fn file_callbacks(
         }
 
         viewer.refresh_recent_list();
-        let rec = &viewer.config.recent_files;
-        println!("{:?}",viewer.display_size);
+        //let rec = &viewer.config.recent_files;
+        //println!("{:?}",viewer.display_size);
         
-        let selector = BackendSelector::new().require_opengl_es_with_version(3, 0);
+        /*let selector = BackendSelector::new().require_opengl_es_with_version(3, 0);
         if let Err(err) = selector.select() {
             println!("Error selecting backend with OpenGL ES support:\n   {err}");
             viewer.use_gpu = false;
             viewer.gpu_tried_init = true;
-        }
+        }*/
         viewer.settings_window = Some(settings_ui);
         viewer.about_window = Some(about_ui);
         viewer.info_window = Some(info_ui);
         viewer.save_window = Some(save_window_ui);
     }
+    
+    {
+        let value = state_copy.clone();
+        if let Some(settings_ui)  = &state_copy.borrow().settings_window {
+            let settings_handle = settings_ui.as_weak();
+            settings_ui.on_changed({
+                let state_rc = value.clone();
+                move || {            
+                    if let Some(s_ui) = settings_handle.upgrade() { 
+                        let mut viewer = state_rc.borrow_mut();
+                        let colset = s_ui.get_colset();
+                        viewer.color_settings.show_r = colset.show_r;
+                        viewer.color_settings.show_g = colset.show_g;
+                        viewer.color_settings.show_b = colset.show_b;
+                        viewer.color_settings.invert = colset.invert;
+                        viewer.color_settings.rotate = Rotate::from_u8(colset.rotate as u8);
+                        viewer.color_settings.oklab  = colset.oklab;
+                        viewer.color_settings.gamma = s_ui.get_gamma();
+                        viewer.color_settings.contrast = s_ui.get_contrast();
+                        viewer.color_settings.brightness = s_ui.get_brightness();
+                        viewer.color_settings.hue_shift = s_ui.get_hue_shift();
+                        viewer.color_settings.saturation = s_ui.get_saturation();
+                        viewer.color_settings.sharpen_amount = s_ui.get_sharpen_amount();
+                        viewer.color_settings.sharpen_radius = s_ui.get_sharpen_radius();
+                        viewer.review(true, false);
+                    }
+                }
+            });
+        }
+    }
+    {
+        let value = state_copy.clone();
+        if let Some(settings_ui)  = &state_copy.borrow().settings_window {
+            let settings_handle = settings_ui.as_weak();
+            settings_ui.on_hide({
+                let state_rc = value.clone();
+                move || {            
+                    if let Some(s_ui) = settings_handle.upgrade() { 
+                        let mut viewer = state_rc.borrow_mut();
+                        viewer.show_settings = false;
+                        s_ui.hide().unwrap();
+                    }
+                }
+            });
+        }
+    }
+    {
+        let value = state_copy.clone();
+        if let Some(info_ui)  = &state_copy.borrow().info_window {
+            let info_handle = info_ui.as_weak();
+            info_ui.on_hide({
+                let state_rc = value.clone();
+                move || {            
+                    if let Some(s_ui) = info_handle.upgrade() { 
+                        let mut viewer = state_rc.borrow_mut();
+                        viewer.show_info = false;
+                        s_ui.hide().unwrap();
+                    }
+                }
+            });
+        }
+    }
+    {
+        let value = state_copy.clone();
+        if let Some(info_ui)  = &state_copy.borrow().info_window {
+            let info_handle = info_ui.as_weak();
+            info_ui.on_go_map({
+                let state_rc = value.clone();
+                move || {            
+                    if let Some(s_ui) = info_handle.upgrade() { 
+                        let mut viewer = state_rc.borrow_mut();
+                        let map_url = s_ui.get_map_url().to_string();
+                        if let Err(e) = webbrowser::open(&map_url) {
+                            eprintln!("Can not open the Browser: {}", e);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
     
     {
         let value = state_copy.clone();
@@ -110,20 +191,6 @@ pub fn file_callbacks(
             ui.on_show_about(move || {
                 if let Some(s_ui) = about_handle.upgrade() {
                     println!("on_show_about");
-                    s_ui.show().unwrap(); // Megjeleníti a független ablakot
-                }
-            });
-        }
-    }
-
-    {
-        let value = state_copy.clone();
-        let viewer = value.borrow_mut();
-        if let Some(info_ui)  = &viewer.info_window {
-            let info_handle = info_ui.as_weak();    
-            ui.on_show_info(move || {
-                if let Some(s_ui) = info_handle.upgrade() {
-                    println!("on_show_info");
                     s_ui.show().unwrap(); // Megjeleníti a független ablakot
                 }
             });
@@ -215,10 +282,10 @@ pub fn file_callbacks(
         on_next_image(&mut value.borrow_mut());
     });
     
-    /*let value = state_copy.clone();
+    let value = state_copy.clone();
     ui.on_info_clicked(move || {
-        on_info_clicked(&mut value.borrow_mut());
-    });*/
+        on_info_clicked(&mut value.borrow_mut(), false);
+    });
 
     let value = state_copy.clone();
     ui.on_change_background(move |mode| {
@@ -377,7 +444,7 @@ pub fn file_callbacks(
                     if text == "s" || text == "S" { on_save_view(&mut state.borrow_mut()); return true; }
                 }
                 else {
-                    if text == "i" { on_info_clicked(&mut state.borrow_mut()); return true; }
+                    if text == "i" { on_info_clicked(&mut state.borrow_mut(), false); return true; }
                     if text == "c" { on_color_setting(&mut state.borrow_mut()); return true; }
                     if text == "o" { on_open_file(&mut state.borrow_mut()); return true; }
                     if text == "r" { on_reopen_file(&mut state.borrow_mut()); return true; }
@@ -387,6 +454,7 @@ pub fn file_callbacks(
                     if text == "d" { on_change_background(&mut state.borrow_mut(),-1); return true; }
                     if text == "+" { on_plus(&mut state.borrow_mut(),0.0); return true; }
                     if text == "-" { on_minus(&mut state.borrow_mut(),0.0); return true; }
+                    if text == "f" { on_zoom(&mut state.borrow_mut(),-1.0); return true; }
                     if text == "1" { on_zoom(&mut state.borrow_mut(),1.0); return true; }
                     if text == "2" { on_zoom(&mut state.borrow_mut(),0.5); return true; }
                     if text == "3" { on_zoom(&mut state.borrow_mut(),0.45); return true; }
@@ -502,8 +570,124 @@ fn on_next_image(viewer: &mut ImageViewer) {
     viewer.navigation(1);
 }
 
-fn on_info_clicked(viewer: &mut ImageViewer) {
+pub fn on_info_clicked(viewer: &mut ImageViewer, refresh_only: bool) {
     println!("on_info_clicked");
+    if let Some(info_ui)  = &viewer.info_window {
+        let info_handle = info_ui.as_weak();    
+        if let Some(s_ui) = info_handle.upgrade() {
+            s_ui.set_filename( viewer.image_name.clone().into());
+            s_ui.set_imagesize( format!( "{} x {} pixel", viewer.image_size.x, viewer.image_size.y ).into());
+            let mut s = "".to_string();
+            if let Some(meta) = &viewer.file_meta {
+                s = format!("{}", meta.len());
+                let l = s.len();
+                if l > 3 {
+                    s = format!(
+                        "{} {}",
+                        s[..l - 3].to_string(),
+                        s[l - 3..].to_string()
+                    );
+                }
+                if l > 6 {
+                    s = format!(
+                        "{} {}",
+                        s[..l - 6].to_string(),
+                        s[l - 6..].to_string()
+                    );
+                }
+                if l > 9 {
+                    s = format!(
+                        "{} {}",
+                        s[..l - 9].to_string(),
+                        s[l - 9..].to_string()
+                    );
+                }
+                s = format!("{} Byte", s);
+            }
+            s_ui.set_filesize( s.into());
+            s = "".to_string();
+            if let Some(meta) = &viewer.file_meta {
+                if let Ok(time) = meta.created() {
+                    let ts = time_format::from_system_time(time).unwrap();
+                    let c = time_format::components_utc(ts).unwrap();
+                    s = format!(
+                        "{}-{:02}-{:02} {:02}:{:02}:{:02}",
+                        c.year, c.month, c.month_day, c.hour, c.min, c.sec
+                    );
+                }
+            }
+            s_ui.set_filetime( s.into());
+            s = "".to_string();
+            if let Some(resol) = &viewer.resolution {
+                let x_res = resol.xres;
+                let y_res = resol.yres;
+                let dpi = resol.dpi;
+                let x_val = x_res.to_string();
+                let y_val = y_res.to_string();
+                let unit_str = if dpi { "dpi" } else { "dpcm" };
+                if x_val == y_val {
+                    s = format!("{} {}", x_val, unit_str);
+                } else {
+                    s = format!("{}x{} {}", x_val, y_val, unit_str);
+                }
+            }
+            s_ui.set_resolution( s.into());
+            if let Some(exif) = &viewer.exif {
+                s_ui.set_exif( true);
+                if let Some(f) = exif.get_field("DateTimeOriginal".into()) {
+                    s_ui.set_created(f.into());
+                }
+                if let Some(f) = exif.get_field("Model".into()) {
+                    s_ui.set_model(f.into());
+                }
+                let la = exif .get_num_field("GPSLatitude".into());
+                let lo = exif.get_num_field("GPSLongitude".into());
+                let lar = exif.get_field("GPSLatitudeRef".into());
+                let lor = exif.get_field("GPSLongitudeRef".into());
+                if let (Some(mut la_), Some(mut lo_), Some(lar_), Some(lor_), ) = (la, lo, lar, lor) {
+                    s_ui.set_gps( true);
+                    if lar_.contains('S') {
+                        la_ = -la_;
+                    }
+                    if lor_.contains('W') {
+                        lo_ = -lo_;
+                    }
+                    let koord_szoveg = format!("{:.6}, {:.6}", la_, lo_);
+                    s_ui.set_location(koord_szoveg.into());
+                    let map_url = format!(
+                        "https://www.google.com/maps/place/{:.6},{:.6}",
+                        la_, lo_
+                    );
+                    s_ui.set_map_url(map_url.into());
+                }
+                else {
+                    s_ui.set_gps( false);
+                }
+            }
+            else {
+                s_ui.set_exif( false);
+            }
+            if !refresh_only {
+                if !viewer.show_info {
+                    viewer.show_info = true;
+                    s_ui.show().unwrap(); // Megjeleníti a független ablakot
+                    
+                    /*if let Some(handle) = &viewer.ui_handle {                    
+                        if let Some(ui) = handle.upgrade() {
+                            slint::Timer::single_shot(std::time::Duration::from_millis(250), move || {
+                                ui.window().show().unwrap();
+                                ui.invoke_grab_keyboard_focus();
+                            });
+                        }
+                    }*/
+                }
+                else {
+                    viewer.show_info = false;
+                    s_ui.hide().unwrap(); // Megjeleníti a független ablakot
+                }
+            }
+        }
+    }
 }
 
 fn on_change_background(viewer: &mut ImageViewer, mode: i32) {
@@ -595,14 +779,16 @@ fn on_zoom(viewer: &mut ImageViewer, mag : f32) {
 
 
 fn on_plus(viewer: &mut ImageViewer, i: f32) {
-    println!("on_plus");
-    viewer.change_magnify = 1.0;//if i==0.0 { 1.0 } else {i};
+    //println!("on_plus");
+    viewer.mouse_zoom = i != 0.0;
+    viewer.change_magnify = 1.0;
     viewer.review(true, false);
 }
 
 fn on_minus(viewer: &mut ImageViewer, i : f32) {
-    println!("on_minus");
-    viewer.change_magnify = -1.0; //if i==0.0 { -1.0 } else {i};
+    //println!("on_minus");
+    viewer.mouse_zoom = i != 0.0;
+    viewer.change_magnify = -1.0;
     viewer.review(true, false);
 }
 
@@ -706,26 +892,31 @@ fn on_color_setting(viewer: &mut ImageViewer) {
     if let Some(settings_ui)  = &viewer.settings_window {
         let settings_handle = settings_ui.as_weak();    
         if let Some(s_ui) = settings_handle.upgrade() {
-            let colset = SlintColorSettings{
-                gamma: viewer.color_settings.gamma,
-                contrast: viewer.color_settings.contrast,
-                brightness: viewer.color_settings.brightness,
-                hue_shift: viewer.color_settings.hue_shift,      // -180.0 .. 180.0 (fok)
-                saturation: viewer.color_settings.saturation,     // -1.0 .. 1.0
-                show_r: viewer.color_settings.show_r,
-                show_g: viewer.color_settings.show_g,
-                show_b: viewer.color_settings.show_b,
-                invert: viewer.color_settings.invert,
-                sharpen_amount: viewer.color_settings.sharpen_amount, // -1.0 .. 5.0 // realy image setting
-                sharpen_radius: viewer.color_settings.sharpen_radius, // 0.2 .. 3.0 // realy image setting
-                rotate: viewer.color_settings.rotate.to_u8() as i32, // realy image setting
-                oklab: viewer.color_settings.oklab,
-            };
-            println!("on_show_color_settings");
-            s_ui.set_colset(colset);
-            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+            if !viewer.show_settings {
+                viewer.show_settings = true;
+                let colset = SlintColorSettings{
+                    show_r: viewer.color_settings.show_r,
+                    show_g: viewer.color_settings.show_g,
+                    show_b: viewer.color_settings.show_b,
+                    invert: viewer.color_settings.invert,
+                    rotate: viewer.color_settings.rotate.to_u8() as i32, // realy image setting
+                    oklab: viewer.color_settings.oklab,
+                };
+                println!("on_show_color_settings");
+                s_ui.set_gamma( viewer.color_settings.gamma);
+                s_ui.set_contrast( viewer.color_settings.contrast);
+                s_ui.set_brightness( viewer.color_settings.brightness);
+                s_ui.set_hue_shift( viewer.color_settings.hue_shift);
+                s_ui.set_saturation( viewer.color_settings.saturation);
+                s_ui.set_sharpen_amount( viewer.color_settings.sharpen_amount);
+                s_ui.set_sharpen_radius( viewer.color_settings.sharpen_radius);
+                s_ui.set_colset(colset);
+                s_ui.show().unwrap(); // Megjeleníti a független ablakot
+            }
+            else {
+                viewer.show_settings = false;
+                s_ui.hide().unwrap(); // Megjeleníti a független ablakot
+            }
         }
     }
-    
-    // TODO !!!!    self.color_correction_dialog = !self.color_correction_dialog;
 }
