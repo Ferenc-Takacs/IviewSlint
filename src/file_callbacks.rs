@@ -46,11 +46,13 @@ pub fn file_callbacks(
         viewer.display_size = (display_info.width as f32, display_info.height as f32).into();
         let bkg = viewer.bg_style.clone().to();
         ui.set_background_type(bkg);
-        let pos = (viewer.display_size - viewer.window_size) * 0.5;
+        let pos = ((viewer.display_size - viewer.window_size) * 0.5).floor();
         let new_state = ImageState {
             window_width: viewer.window_size.x,     // length -> f32
             window_height: viewer.window_size.y,    // length -> f32
-            zoom_level: viewer.magnify,       // float -> f32
+            viewport_width: (viewer.window_size.x * viewer.magnify).floor(), // float -> f32
+            viewport_height: (viewer.window_size.y * viewer.magnify).floor(), // float -> f32
+            zoom_level: viewer.magnify,
             current_image: slint::Image::default(),       // image -> slint::Image
             window_title: "iViewer".into(),            // string -> slint::SharedString
         };
@@ -561,12 +563,12 @@ fn on_reopen_file(viewer: &mut ImageViewer) {
 }
 
 fn on_prev_image(viewer: &mut ImageViewer) {
-    println!("on_prev_image");
+    //println!("on_prev_image");
     viewer.navigation(-1);
 }
 
 fn on_next_image(viewer: &mut ImageViewer) {
-    println!("on_next_image");
+    //println!("on_next_image");
     viewer.navigation(1);
 }
 

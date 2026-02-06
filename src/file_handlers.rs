@@ -976,6 +976,7 @@ impl ImageViewer {
             }
 
             self.original_image = Some(img);
+            self.resized_image = None;
 
             // Először alaphelyzetbe állítjuk az animációs adatokat
             self.anim_data = None;

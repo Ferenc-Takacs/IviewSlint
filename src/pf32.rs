@@ -43,5 +43,7 @@ impl Pf32 {
     pub fn length( self ) -> f32 {  (self.x*self.x+self.y*self.y).sqrt() }
     pub fn min( self, b: Pf32 ) -> Pf32 { Pf32{ x: self.x.min(b.x), y: self.y.min(b.y) } }
     pub fn max( self, b: Pf32 ) -> Pf32 { Pf32{ x: self.x.max(b.x), y: self.y.max(b.y) } }
+    pub fn floor( self ) -> Pf32 { Pf32{ x: self.x.floor(), y: self.y.floor() } }
+    pub fn even( self ) -> Pf32 { Pf32{ x: (self.x*0.5).floor()*2.0, y: (self.y*0.5).floor()*2.0 } }
 }
 

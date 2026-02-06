@@ -62,6 +62,7 @@ pub struct ImageViewer {
     // Slint kompatibilis kép tárolás
     pub current_slint_image: Option<slint::Image>, 
     pub original_image: Option<image::DynamicImage>,
+    pub resized_image: Option<image::DynamicImage>,
     pub rgba_image: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     
     pub display_size: Pf32, 
@@ -124,6 +125,7 @@ impl Default for ImageViewer {
             resize: 1.0,
             current_slint_image: None,
             original_image: None,
+            resized_image: None,
             rgba_image: None,
             display_size: Pf32{x:1280.0, y:1024.0},
             window_frame: Pf32{ x:10.0 , y:60.0 }, // title, menu, padding, rendszer tálca

@@ -9,7 +9,9 @@ export struct RecentFileSlint {
 export struct ImageState {
     window_width: length,
     window_height: length,
-    zoom_level: float,
+    viewport_width: length,
+    viewport_height: length,
+    zoom-level: float,
     current_image: image,
     window_title: string,
 }
@@ -667,8 +669,8 @@ export component MainWindow inherits Window {
  
             ScrollView  {
             
-                viewport-width:  img.source.width  * root.img_state.zoom_level * 1px;
-                viewport-height: img.source.height * root.img_state.zoom_level * 1px;
+                viewport-width:  root.img_state.viewport_width;
+                viewport-height: root.img_state.viewport_height;
                 viewport-x <=> root.offset_x ;
                 viewport-y <=> root.offset_y ;
                 mouse-drag-pan-enabled: true;
@@ -678,6 +680,8 @@ export component MainWindow inherits Window {
                     width: parent.viewport-width;
                     height: parent.viewport-height;
                     image-fit: contain;
+                    horizontal-alignment: ImageHorizontalAlignment.left;
+                    vertical-alignment: ImageVerticalAlignment.top;
                 }
                 
                 TouchArea {

@@ -94,12 +94,6 @@ pub struct AnimatedImage {
 impl ImageViewer {
 
     pub fn review(&mut self, coloring: bool, new_rotate: bool) {
-        if let Some(mut img) = self.original_image.clone() {
-            self.review_core(&mut img, coloring, new_rotate)
-        }
-    }
-    
-    fn review_core(&mut self, img: & mut image::DynamicImage, coloring: bool, new_rotate: bool) {
         let default_settings = ColorSettings::default();
         if coloring {
             if let Some(_interface) = &self.gpu_interface {
@@ -113,14 +107,27 @@ impl ImageViewer {
             self.color_settings = default_settings.clone();
         }
 
-        let max_gpu_size = 4096;// TODO !!! ctx.input(|i| i.max_texture_side) as u32;
-        let w_orig = img.width();
-        if img.width() > max_gpu_size || img.height() > max_gpu_size {
-            *img = img.resize(
-                max_gpu_size,
-                max_gpu_size,
-                image::imageops::FilterType::Triangle,
-            );
+        let mut img : & mut image::DynamicImage = &mut Default::default();
+        if let Some(mut resized_image) = self.resized_image.clone() {
+            *img = resized_image;
+        }
+        else {
+            if let Some(mut image) = self.original_image.clone() {
+                let w_orig = image.width();
+                let h_orig = image.height();
+                let max_gpu_size = 4096;// TODO !!! ctx.input(|i| i.max_texture_side) as u32;
+                if w_orig > max_gpu_size || h_orig > max_gpu_size {
+                    let magn = (max_gpu_size as f64 / w_orig as f64).max(max_gpu_size as f64 / h_orig as f64).ceil();
+                    *img = image.thumbnail((w_orig as f64/magn) as u32, (h_orig as f64/magn) as u32);
+                    //*img = image.resize( max_gpu_size, max_gpu_size, image::imageops::FilterType::Triangle, );
+                    self.resize =  w_orig as f32 / img.width() as f32;
+                    self.resized_image = Some(img.clone());
+                }
+                else {
+                    self.resize = 1.0;
+                    *img = image;
+                }
+            }
         }
         self.modified = !self.show_original_only &&
                 (self.color_settings.is_setted() || self.color_settings.is_blured());
@@ -145,7 +152,6 @@ impl ImageViewer {
                 self.image_size.y);
         }
 
-        self.resize = self.image_size.x / w_orig as f32;
         
         if self.color_settings.is_setted() || self.color_settings.is_blured() {
             if self.gpu_interface.is_some() {
@@ -179,7 +185,7 @@ impl ImageViewer {
                 old_offset.y = ui.get_offset_y();
             }
         }
-        let display_size_netto = self.display_size - self.window_frame;
+        let display_size_netto = (self.display_size - self.window_frame).floor();
         let mut bigger = 1.0;
         
         if self.want_magnify == -1.0 { // set size to fit
@@ -211,10 +217,11 @@ impl ImageViewer {
         }
         
         let zero = Pf32 { x: 0.0, y: 0.0 };
+        let one = Pf32 { x: 1.0, y: 1.0 };
         let mut off = Pf32 { x: 0.0, y: 0.0 };
-        let new_size = self.image_size * self.magnify;
+        let new_size = (self.image_size * self.magnify).floor();
         let inner_size = new_size.min(display_size_netto);
-        let pos = if self.center { (display_size_netto - inner_size) * 0.5 } else { zero };
+        let pos = (if self.center { (display_size_netto - inner_size) * 0.5 } else { zero }).floor();
 
         
         //if new_size.x > inner_size.x || new_size.y > inner_size.y {
@@ -242,15 +249,24 @@ impl ImageViewer {
                     if bigger != 1.0 || self.want_magnify == -1.0 {
                         ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
                     }
+                    let old_state = ui.get_img_state();
                     ui.set_offset_x(off.x);
                     ui.set_offset_y(off.y);
                     let new_state = ImageState {
                         window_width: inner_size.x,
                         window_height: inner_size.y,
+                        viewport_width: new_size.x,
+                        viewport_height: new_size.y,
                         zoom_level: self.magnify,
                         current_image: slint_img,
                         window_title: title,
                     };
+                    if  old_state.window_width != new_state.window_width ||
+                        old_state.window_height != new_state.window_height ||
+                        old_state.viewport_width != new_state.viewport_width ||
+                        old_state.viewport_height != new_state.viewport_height {
+                            println!("{:?} {:?} {:?} {:?} {:?} {:?} ", self.resize, self.image_size, inner_size, new_size, pos, off);
+                        }
                     ui.set_img_state(new_state);
                 }
             }
