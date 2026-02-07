@@ -17,10 +17,22 @@ use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::env;
 
 fn main() -> Result<(), slint::PlatformError> {
+	unsafe {
+		//std::env::set_var("SLINT_BACKEND", "winit");
+		std::env::set_var("SLINT_DEBUG_PERFORMANCE", "console,refresh_lazy");
+	}
     //let icon = load_icon();
     let ui = MainWindow::new()?;
+
+	unsafe {
+		//std::env::set_var("SLINT_BACKEND", "winit");
+		//std::env::set_var("SLINT_DEBUG_PERFORMANCE", "1");
+	}
+    
+    //println!("Used backend: {:?}", slint::platform::backend());
     let settings_ui = ColorCorrectionWindow::new()?;
     let about_ui = AboutWindow::new()?;
     let info_ui = InfoWindow::new()?;
@@ -45,6 +57,7 @@ pub struct ImageViewer {
     pub save_window: Option<SaveWindow>,
     pub show_settings: bool,
     pub show_info: bool,
+    pub show_save: bool,
     
     pub image_full_path: Option<PathBuf>,
     pub file_meta: Option<fs::Metadata>,
@@ -69,6 +82,7 @@ pub struct ImageViewer {
     pub window_frame: Pf32, // title, menu, padding, rendszer tálca
     pub window_size: Pf32, 
     pub image_size: Pf32, 
+    pub original_image_size: Pf32, 
     pub mouse_pos: Pf32,
     pub mouse_zoom: bool,
     pub center: bool,
@@ -110,6 +124,7 @@ impl Default for ImageViewer {
             save_window: None,
             show_settings: false,
             show_info: false,
+            show_save: false,
             
             image_full_path: None,
             file_meta: None,
@@ -131,6 +146,7 @@ impl Default for ImageViewer {
             window_frame: Pf32{ x:10.0 , y:60.0 }, // title, menu, padding, rendszer tálca
             window_size: Pf32{x:800.0, y:600.0},
             image_size: Pf32{x:800.0, y:600.0},
+            original_image_size: Pf32{x:800.0, y:600.0},
             mouse_pos: Pf32{x:0.0, y:0.0},
             mouse_zoom: false,
             center: true,

@@ -115,9 +115,10 @@ impl ImageViewer {
             if let Some(mut image) = self.original_image.clone() {
                 let w_orig = image.width();
                 let h_orig = image.height();
+                self.original_image_size = (w_orig,h_orig).into();
                 let max_gpu_size = 4096;// TODO !!! ctx.input(|i| i.max_texture_side) as u32;
                 if w_orig > max_gpu_size || h_orig > max_gpu_size {
-                    let magn = (max_gpu_size as f64 / w_orig as f64).max(max_gpu_size as f64 / h_orig as f64).ceil();
+                    let magn = (w_orig as f64 / max_gpu_size as f64 ).max(h_orig as f64 / max_gpu_size as f64 ).ceil();
                     *img = image.thumbnail((w_orig as f64/magn) as u32, (h_orig as f64/magn) as u32);
                     //*img = image.resize( max_gpu_size, max_gpu_size, image::imageops::FilterType::Triangle, );
                     self.resize =  w_orig as f32 / img.width() as f32;
@@ -261,12 +262,12 @@ impl ImageViewer {
                         current_image: slint_img,
                         window_title: title,
                     };
-                    if  old_state.window_width != new_state.window_width ||
+                    /*if  old_state.window_width != new_state.window_width ||
                         old_state.window_height != new_state.window_height ||
                         old_state.viewport_width != new_state.viewport_width ||
                         old_state.viewport_height != new_state.viewport_height {
                             println!("{:?} {:?} {:?} {:?} {:?} {:?} ", self.resize, self.image_size, inner_size, new_size, pos, off);
-                        }
+                        }*/
                     ui.set_img_state(new_state);
                 }
             }

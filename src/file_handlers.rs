@@ -7,6 +7,7 @@ use webp::Encoder;
 use image::AnimationDecoder;
 use std::io::{Read, Seek};
 use img_parts::ImageEXIF;
+use slint::ComponentHandle;
 
 use crate::exif_my::*;
 use crate::colors::*;
@@ -444,7 +445,7 @@ impl ImageViewer {
                 let inex = self.exif.is_some();
                 let can = ( saveformat == SaveFormat::Jpeg || saveformat == SaveFormat::Webp
                     || saveformat == SaveFormat::Bmp ) && inex;
-                let dial_need = saveformat == SaveFormat::Jpeg || saveformat == SaveFormat::Webp ||
+                let mut dial_need = saveformat == SaveFormat::Jpeg || saveformat == SaveFormat::Webp ||
                     (saveformat == SaveFormat::Bmp && inex);
                 self.save_dialog = Some(SaveSettings {
                     full_path: ut,
@@ -454,6 +455,24 @@ impl ImageViewer {
                     can_include_exif: can,
                     include_exif: inex,
                 });
+                if dial_need {
+                    if let Some(save_ui)  = &self.save_window {
+                        let save_handle = save_ui.as_weak();    
+                        if let Some(s_ui) = save_handle.upgrade() {
+                            s_ui.set_saveformat(saveformat as i32);
+                            s_ui.set_quality(85.0);
+                            s_ui.set_lossless(false);
+                            s_ui.set_can_include_exif(can);
+                            s_ui.set_include_exif(inex);
+                            if let Some(exif) = self.exif.clone() {
+                                s_ui.set_raw_exif_length(exif.raw_exif_length as i32);
+                            }
+                            s_ui.set_ok(false);
+                            self.show_save = true;
+                            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+                        }
+                    }
+                }
                 if !dial_need {
                     self.completing_save();
                 }

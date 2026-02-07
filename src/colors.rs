@@ -4,6 +4,39 @@ use std::f32::consts::PI;
 
 const TWO_PI: f32 = PI * 2.0;
 
+///////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub enum Rotate {
+    Rotate0,
+    Rotate90,
+    Rotate180,
+    Rotate270,
+}
+impl Rotate {
+    pub fn to_u8(self) -> u8 {
+        match self {
+            Rotate::Rotate0 => 0,
+            Rotate::Rotate90 => 1,
+            Rotate::Rotate180 => 2,
+            Rotate::Rotate270 => 3,
+        }
+    }
+
+    pub fn from_u8(v: u8) -> Self {
+        match v % 4 {
+            0 => Rotate::Rotate0,
+            1 => Rotate::Rotate90,
+            2 => Rotate::Rotate180,
+            3 => Rotate::Rotate270,
+            _ => Rotate::Rotate0,
+        }
+    }
+
+    pub fn add(self, other: Rotate) -> Rotate {
+        Rotate::from_u8(self.to_u8() + other.to_u8())
+    }
+}
+
 fn r(th: f32) -> f32 {
     let ra = 2.4285922050f32;
     let rb = 0.808675766f32;
@@ -207,7 +240,8 @@ pub struct Lut4ColorSettings {
 impl Lut4ColorSettings {
     pub fn new() -> Self {
         let size = 33;
-        let mut data = Vec::with_capacity(size * size * size * 4);
+        let mut data = vec![0u8; size * size * size * 4];//Vec::with_capacity(size * size * size * 4);
+        let mut idx = 0;
         for b in 0..size {
             for g in 0..size {
                 for r in 0..size {
@@ -215,10 +249,10 @@ impl Lut4ColorSettings {
                     let g_f = g as f32 / (size - 1) as f32;
                     let b_f = b as f32 / (size - 1) as f32;
                     let color = [r_f, g_f, b_f];
-                    data.push((color[0] * 255.0) as u8);
-                    data.push((color[1] * 255.0) as u8);
-                    data.push((color[2] * 255.0) as u8);
-                    data.push(255); // Alpha
+                    data[idx] = (color[0] * 255.0) as u8; idx +=1;
+                    data[idx] = (color[1] * 255.0) as u8; idx +=1;
+                    data[idx] = (color[2] * 255.0) as u8; idx +=1;
+                    data[idx] = 255u8; idx +=1;
                 }
             }
         }
@@ -227,7 +261,7 @@ impl Lut4ColorSettings {
     
     pub fn default() -> Lut4ColorSettings {
         let mut s = Lut4ColorSettings::new();
-        s.update_lut(&ColorSettings::default());
+        //s.update_lut(&ColorSettings::default());
         s
     }
 
@@ -394,47 +428,5 @@ impl Lut4ColorSettings {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-/* in exif
-1 = The 0th row is at the visual top of the image, and the 0th column is the visual left-hand side.
-2 = The 0th row is at the visual top of the image, and the 0th column is the visual right-hand side.
-3 = The 0th row is at the visual bottom of the image, and the 0th column is the visual right-hand side.
-4 = The 0th row is at the visual bottom of the image, and the 0th column is the visual left-hand side.
-5 = The 0th row is the visual left-hand side of the image, and the 0th column is the visual top.
-6 = The 0th row is the visual right-hand side of the image, and the 0th column is the visual top.
-7 = The 0th row is the visual right-hand side of the image, and the 0th column is the visual bottom.
-8 = The 0th row is the visual left-hand side of the image, and the 0th column is the visual bottom.
-*/
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
-pub enum Rotate {
-    Rotate0,
-    Rotate90,
-    Rotate180,
-    Rotate270,
-}
-impl Rotate {
-    pub fn to_u8(self) -> u8 {
-        match self {
-            Rotate::Rotate0 => 0,
-            Rotate::Rotate90 => 1,
-            Rotate::Rotate180 => 2,
-            Rotate::Rotate270 => 3,
-        }
-    }
-
-    pub fn from_u8(v: u8) -> Self {
-        match v % 4 {
-            0 => Rotate::Rotate0,
-            1 => Rotate::Rotate90,
-            2 => Rotate::Rotate180,
-            3 => Rotate::Rotate270,
-            _ => Rotate::Rotate0,
-        }
-    }
-
-    pub fn add(self, other: Rotate) -> Rotate {
-        Rotate::from_u8(self.to_u8() + other.to_u8())
-    }
-}
 ///////////////////////////////////////////////////////////////////////////
 

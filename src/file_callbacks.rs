@@ -43,6 +43,14 @@ pub fn file_callbacks(
         };
         
         let mut viewer = state_copy.borrow_mut();
+
+        /*let selector = BackendSelector::new().require_opengl_es();
+        if let Err(err) = selector.select() {
+            println!("Error selecting backend:\n   {err}");
+            viewer.use_gpu = false;
+            viewer.gpu_tried_init = true;
+        }*/
+
         viewer.display_size = (display_info.width as f32, display_info.height as f32).into();
         let bkg = viewer.bg_style.clone().to();
         ui.set_background_type(bkg);
@@ -92,18 +100,12 @@ pub fn file_callbacks(
         //let rec = &viewer.config.recent_files;
         //println!("{:?}",viewer.display_size);
         
-        /*let selector = BackendSelector::new().require_opengl_es_with_version(3, 0);
-        if let Err(err) = selector.select() {
-            println!("Error selecting backend with OpenGL ES support:\n   {err}");
-            viewer.use_gpu = false;
-            viewer.gpu_tried_init = true;
-        }*/
         viewer.settings_window = Some(settings_ui);
         viewer.about_window = Some(about_ui);
         viewer.info_window = Some(info_ui);
         viewer.save_window = Some(save_window_ui);
     }
-    
+
     {
         let value = state_copy.clone();
         if let Some(settings_ui)  = &state_copy.borrow().settings_window {
@@ -133,6 +135,7 @@ pub fn file_callbacks(
             });
         }
     }
+
     {
         let value = state_copy.clone();
         if let Some(settings_ui)  = &state_copy.borrow().settings_window {
@@ -149,6 +152,7 @@ pub fn file_callbacks(
             });
         }
     }
+
     {
         let value = state_copy.clone();
         if let Some(info_ui)  = &state_copy.borrow().info_window {
@@ -165,6 +169,7 @@ pub fn file_callbacks(
             });
         }
     }
+
     {
         let value = state_copy.clone();
         if let Some(info_ui)  = &state_copy.borrow().info_window {
@@ -184,7 +189,7 @@ pub fn file_callbacks(
         }
     }
 
-    
+
     {
         let value = state_copy.clone();
         let viewer = value.borrow_mut();
@@ -199,15 +204,31 @@ pub fn file_callbacks(
         }
     }
 
-    /*
-    let save_window_handle = save_window_ui.as_weak();
-    ui.on_show_save_window(move || {
-        if let Some(s_ui) = save_window_handle.upgrade() {
-            println!("on_show_save_window");
-            s_ui.show().unwrap(); // Megjeleníti a független ablakot
+    {
+        let value = state_copy.clone();
+        if let Some(save_ui)  = &state_copy.borrow().save_window {
+            let save_handle = save_ui.as_weak();
+            save_ui.on_end({
+                let state_rc = value.clone();
+                move || {            
+                    if let Some(s_ui) = save_handle.upgrade() { 
+                        let mut viewer = state_rc.borrow_mut();
+                        if s_ui.get_ok() {
+                            if let Some(ref mut dial) = viewer.save_dialog {
+                                dial.quality = s_ui.get_quality() as u8;
+                                dial.lossless = s_ui.get_lossless();
+                                dial.include_exif = s_ui.get_include_exif();
+                            }
+                            viewer.completing_save();
+                        }
+                        s_ui.hide().unwrap();
+                        viewer.show_save = false;
+                    }
+                }
+            });
         }
-    });
-    */
+    }
+
 
     let value = state_copy.clone();
     ui.on_copy_image(move || {
@@ -578,7 +599,10 @@ pub fn on_info_clicked(viewer: &mut ImageViewer, refresh_only: bool) {
         let info_handle = info_ui.as_weak();    
         if let Some(s_ui) = info_handle.upgrade() {
             s_ui.set_filename( viewer.image_name.clone().into());
-            s_ui.set_imagesize( format!( "{} x {} pixel", viewer.image_size.x, viewer.image_size.y ).into());
+            s_ui.set_imagesize(
+                format!( "{} x {} pixel",
+                    viewer.original_image_size.x,
+                    viewer.original_image_size.y ).into());
             let mut s = "".to_string();
             if let Some(meta) = &viewer.file_meta {
                 s = format!("{}", meta.len());
@@ -685,7 +709,7 @@ pub fn on_info_clicked(viewer: &mut ImageViewer, refresh_only: bool) {
                 }
                 else {
                     viewer.show_info = false;
-                    s_ui.hide().unwrap(); // Megjeleníti a független ablakot
+                    s_ui.hide().unwrap(); // Elrejti a független ablakot
                 }
             }
         }
@@ -894,25 +918,25 @@ fn on_color_setting(viewer: &mut ImageViewer) {
     if let Some(settings_ui)  = &viewer.settings_window {
         let settings_handle = settings_ui.as_weak();    
         if let Some(s_ui) = settings_handle.upgrade() {
+            let colset = SlintColorSettings{
+                show_r: viewer.color_settings.show_r,
+                show_g: viewer.color_settings.show_g,
+                show_b: viewer.color_settings.show_b,
+                invert: viewer.color_settings.invert,
+                rotate: viewer.color_settings.rotate.to_u8() as i32, // realy image setting
+                oklab: viewer.color_settings.oklab,
+            };
+            println!("on_show_color_settings");
+            s_ui.set_gamma( viewer.color_settings.gamma);
+            s_ui.set_contrast( viewer.color_settings.contrast);
+            s_ui.set_brightness( viewer.color_settings.brightness);
+            s_ui.set_hue_shift( viewer.color_settings.hue_shift);
+            s_ui.set_saturation( viewer.color_settings.saturation);
+            s_ui.set_sharpen_amount( viewer.color_settings.sharpen_amount);
+            s_ui.set_sharpen_radius( viewer.color_settings.sharpen_radius);
+            s_ui.set_colset(colset);
             if !viewer.show_settings {
                 viewer.show_settings = true;
-                let colset = SlintColorSettings{
-                    show_r: viewer.color_settings.show_r,
-                    show_g: viewer.color_settings.show_g,
-                    show_b: viewer.color_settings.show_b,
-                    invert: viewer.color_settings.invert,
-                    rotate: viewer.color_settings.rotate.to_u8() as i32, // realy image setting
-                    oklab: viewer.color_settings.oklab,
-                };
-                println!("on_show_color_settings");
-                s_ui.set_gamma( viewer.color_settings.gamma);
-                s_ui.set_contrast( viewer.color_settings.contrast);
-                s_ui.set_brightness( viewer.color_settings.brightness);
-                s_ui.set_hue_shift( viewer.color_settings.hue_shift);
-                s_ui.set_saturation( viewer.color_settings.saturation);
-                s_ui.set_sharpen_amount( viewer.color_settings.sharpen_amount);
-                s_ui.set_sharpen_radius( viewer.color_settings.sharpen_radius);
-                s_ui.set_colset(colset);
                 s_ui.show().unwrap(); // Megjeleníti a független ablakot
             }
             else {
