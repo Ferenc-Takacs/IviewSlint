@@ -145,6 +145,7 @@ impl ImageViewer {
     }
     
     pub fn load_animation(&mut self, path: &PathBuf) {
+        self.anim_data = None;
         let Ok(file) = std::fs::File::open(path) else {
             return;
         };
@@ -175,26 +176,21 @@ impl ImageViewer {
                 let delay_ms = if den == 0 { 100 } else { (num / den).max(20) }; // Biztonsági minimum 10ms
                 delays.push(std::time::Duration::from_millis(delay_ms as u64));
 
-                // Konvertálás egui textúrává
                 let rgba = frame.into_buffer();
-                // TODO !!!!!
-                //let color_image = egui::ColorImage::from_rgba_unmultiplied(
-                //    [rgba.width() as usize, rgba.height() as usize],
-                //    &rgba.into_raw(),
-                //);
-                //let img = color_image_to_dynamic(color_image);
-                //images.push(img);
+                images.push(image::DynamicImage::ImageRgba8(rgba));
 
             }
 
             if !images.is_empty() {
                 let total = images.len();
-                self.anim_data = Some(AnimatedImage {
-                    anim_frames: images,
-                    delays,
-                    total_frames: total,
-                });
-                self.last_frame_time = std::time::Instant::now();
+                if total > 1 {
+                    self.anim_data = Some(AnimatedImage {
+                        anim_frames: images,
+                        delays,
+                        total_frames: total,
+                    });
+                    self.last_frame_time = std::time::Instant::now();
+                }
             }
         }
     }
@@ -745,8 +741,7 @@ impl ImageViewer {
             return;
         };
         self.resolution = None;
-        // TODO !!!!
-        //ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!("IView")));
+        self.anim_timer.stop();
         if let Ok(mut img) = image::open(&filepath) {
             if self.image_format == SaveFormat::Tif {
                 if let Ok(file) = std::fs::File::open(&filepath) {

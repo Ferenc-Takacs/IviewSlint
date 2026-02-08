@@ -7,7 +7,7 @@ use crate::image_processing::*;
 use crate::colors::*;
 use crate::Pf32;
 
-use slint::{ComponentHandle,BackendSelector,Image,Color,SharedPixelBuffer,Rgba8Pixel};
+use slint::{ComponentHandle,Image,Color,SharedPixelBuffer,Rgba8Pixel};
 use crate::ImageState;
 use crate::SlintColorSettings;
 use std::rc::Rc;
@@ -43,6 +43,7 @@ pub fn file_callbacks(
         };
         
         let mut viewer = state_copy.borrow_mut();
+        //viewer.self_weak = Some(state.clone());
 
         /*let selector = BackendSelector::new().require_opengl_es();
         if let Err(err) = selector.select() {
@@ -171,14 +172,14 @@ pub fn file_callbacks(
     }
 
     {
-        let value = state_copy.clone();
+        //let value = state_copy.clone();
         if let Some(info_ui)  = &state_copy.borrow().info_window {
             let info_handle = info_ui.as_weak();
             info_ui.on_go_map({
-                let state_rc = value.clone();
+                //let state_rc = value.clone();
                 move || {            
                     if let Some(s_ui) = info_handle.upgrade() { 
-                        let mut viewer = state_rc.borrow_mut();
+                        //let mut viewer = state_rc.borrow_mut();
                         let map_url = s_ui.get_map_url().to_string();
                         if let Err(e) = webbrowser::open(&map_url) {
                             eprintln!("Can not open the Browser: {}", e);
@@ -426,6 +427,11 @@ pub fn file_callbacks(
     
     let ui_weak_keys = ui.as_weak();
     ui.on_key_pressed_event(move |text, ctrl, shift, alt| {
+        let up_ar = slint::SharedString::from(slint::platform::Key::UpArrow);
+        let down_ar = slint::SharedString::from(slint::platform::Key::DownArrow);
+        let left_ar = slint::SharedString::from(slint::platform::Key::LeftArrow);
+        let right_ar = slint::SharedString::from(slint::platform::Key::RightArrow);
+        let esc = slint::SharedString::from(slint::platform::Key::Escape);
         if alt {
         }
         else {
@@ -452,13 +458,9 @@ pub fn file_callbacks(
                     if text == "8" { on_zoom(&mut state.borrow_mut(),8.0); return true; }
                     if text == "9" { on_zoom(&mut state.borrow_mut(),9.0); return true; }
                     if text == "0" { on_zoom(&mut state.borrow_mut(),10.0); return true; }
-                    let up_ar = slint::SharedString::from(slint::platform::Key::UpArrow);
                     if text == up_ar    { on_up(&mut state.borrow_mut()); return true;}
-                    let down_ar = slint::SharedString::from(slint::platform::Key::DownArrow);
                     if text == down_ar  { on_down(&mut state.borrow_mut()); return true;}
-                    let left_ar = slint::SharedString::from(slint::platform::Key::LeftArrow);
                     if text == left_ar  { on_left(&mut state.borrow_mut()); return true;}
-                    let right_ar = slint::SharedString::from(slint::platform::Key::RightArrow);
                     if text == right_ar { on_right(&mut state.borrow_mut()); return true;}
                 }
             }
@@ -488,7 +490,9 @@ pub fn file_callbacks(
                     if text == "8" { on_zoom(&mut state.borrow_mut(),0.2); return true; }
                     if text == "9" { on_zoom(&mut state.borrow_mut(),0.15); return true; }
                     if text == "0" { on_zoom(&mut state.borrow_mut(),0.1); return true; }
-                    let esc = slint::SharedString::from(slint::platform::Key::Escape);
+                    if text == " " { on_play_animation(&mut state.borrow_mut()); return true; }
+                    if text == left_ar { on_back_animation(&mut state.borrow_mut()); return true; }
+                    if text == right_ar { on_forward_animation(&mut state.borrow_mut()); return true; }
                     if text == esc {
                         if let Some(ui) = ui_weak_keys.upgrade() {
                             let _ = ui.window().hide();
@@ -741,16 +745,12 @@ fn generate_checker_tile(style: i32) -> Image {
         5 => (Color::from_rgb_u8(40, 180, 40),Color::from_rgb_u8(180, 50, 180)),
         6 => (Color::from_rgb_u8(0, 0, 0), Color::from_rgb_u8(200, 50, 10)),
         _ => (Color::from_rgb_u8(0,0,0), Color::from_rgb_u8(255,255,255)),
-        //(Color::from_rgb_u8(238, 238, 238), Color::from_rgb_u8(204, 204, 204)), // Szürke
-        //(Color::from_rgb_u8(68, 34, 34), Color::from_rgb_u8(17, 0, 0)),        // Pirosas
-        //(Color::from_rgb_u8(17, 34, 68), Color::from_rgb_u8(0, 5, 17)),        // Kékes
-        //(Color::from_rgb_u8(0, 0, 0), Color::from_rgb_u8(255, 255, 255)),     // Alapértelmezett B/W
     };
 
     let size: u32 = 16; // Egy kocka mérete pixelben
     let full_size = size * 2;
     let mut pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::new(full_size, full_size);
-    let mut pixels = pixel_buffer.make_mut_slice();
+    let pixels = pixel_buffer.make_mut_slice();
 
     for y in 0..full_size {
         for x in 0..full_size {
@@ -818,7 +818,7 @@ fn on_minus(viewer: &mut ImageViewer, i : f32) {
     viewer.review(true, false);
 }
 
-fn on_red_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
+fn on_red_channel(viewer: &mut ImageViewer, _val : bool, _no_set: bool) {
     println!("on_red_channel");
     //if no_set {
     //    viewer.color_settings.show_r = !val;
@@ -834,7 +834,7 @@ fn on_red_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     viewer.review(true, false);
 }
 
-fn on_green_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
+fn on_green_channel(viewer: &mut ImageViewer, _val : bool, _no_set: bool) {
     println!("on_green_channel");
     //if no_set {
     //    viewer.color_settings.show_g = !val;
@@ -850,7 +850,7 @@ fn on_green_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     viewer.review(true, false);
 }
 
-fn on_blue_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
+fn on_blue_channel(viewer: &mut ImageViewer, _val : bool, _no_set: bool) {
     println!("on_blue_channel");
     //if no_set {
     //    viewer.color_settings.show_b = !val;
@@ -866,7 +866,7 @@ fn on_blue_channel(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     viewer.review(true, false);
 }
 
-fn on_invert_channels(viewer: &mut ImageViewer, val : bool, no_set: bool) {
+fn on_invert_channels(viewer: &mut ImageViewer, _val : bool, _no_set: bool) {
     println!("on_invert_channels");
     //if no_set {
     //    viewer.color_settings.invert = !val;
@@ -882,35 +882,64 @@ fn on_invert_channels(viewer: &mut ImageViewer, val : bool, no_set: bool) {
     viewer.review(true, false);
 }
 
-
-//let value = state_copy.clone();
-//ui.on_about(move || {
-//    println!("on_about");
-//    //let mut viewer = value.borrow_mut();
-//});
-
 fn on_play_animation(viewer: &mut ImageViewer) {
-    println!("on_play_animation");
-// Példa Timer indítására a Play gombra
-//let timer = slint::Timer::default();
-    //timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(100), || {
-        // Következő képkocka betöltése...
+    //println!("on_play_animation");
+    if let Some(anim) = &viewer.anim_data {
+        viewer.anim_playing = !viewer.anim_playing;
+        if viewer.anim_playing {
+            if !viewer.anim_loop&& viewer.current_frame + 1 == anim.total_frames {
+                viewer.current_frame = 0;
+            }
+            viewer.review(true, false);
+        }
+    }
 }
 
 fn on_begin_animation(viewer: &mut ImageViewer) {
-    println!("on_begin_animation");
+    //println!("on_begin_animation");
+    if let Some(anim) = &viewer.anim_data {
+        viewer.current_frame = 0;
+        if !viewer.anim_playing {
+            viewer.original_image = Some(anim.anim_frames[viewer.current_frame].clone());
+            viewer.review(true, false);
+        }
+    }
 }
 
 fn on_back_animation(viewer: &mut ImageViewer) {
-    println!("on_back_animation");
+    //println!("on_back_animation");
+    if let Some(anim) = &viewer.anim_data {
+        viewer.anim_playing = false;
+        if viewer.current_frame == 0 {
+            viewer.current_frame = anim.total_frames - 1;
+        } else {
+            viewer.current_frame -= 1;
+        }
+        viewer.original_image = Some(anim.anim_frames[viewer.current_frame].clone());
+        viewer.review(true, false);
+    }
 }
 
 fn on_forward_animation(viewer: &mut ImageViewer) {
-    println!("on_forward_animation");
+    //println!("on_forward_animation");
+    if let Some(anim) = &viewer.anim_data {
+        viewer.anim_playing = false;
+        viewer.current_frame = (viewer.current_frame + 1) % anim.total_frames;
+        viewer.original_image = Some(anim.anim_frames[viewer.current_frame].clone());
+        viewer.review(true, false);
+    }
 }
 
 fn on_loop_animation(viewer: &mut ImageViewer) {
-    println!("on_loop_animation");
+    //println!("on_loop_animation");
+    viewer.anim_loop = !viewer.anim_loop;
+    viewer.current_frame = 0;
+    if let Some(anim) = &viewer.anim_data {
+        if viewer.anim_playing {
+            viewer.original_image = Some(anim.anim_frames[0].clone());
+            viewer.review(true, false);
+        }
+    }
 }
 
 fn on_color_setting(viewer: &mut ImageViewer) {
@@ -942,6 +971,29 @@ fn on_color_setting(viewer: &mut ImageViewer) {
             else {
                 viewer.show_settings = false;
                 s_ui.hide().unwrap(); // Megjeleníti a független ablakot
+            }
+        }
+    }
+}
+
+pub fn set_animation(viewer: &mut ImageViewer){
+    if viewer.anim_playing {
+        if let Some(anim) = &viewer.anim_data {
+            let delay = anim.delays[viewer.current_frame];
+            let total_frames = anim.total_frames;
+            if let Some(state_rc) = &viewer.self_weak.clone() {
+                let state_clone = state_rc.clone();
+                viewer.anim_timer.start(
+                    slint::TimerMode::SingleShot,
+                    delay,
+                    move || {
+                        let mut v = state_clone.borrow_mut();
+                        v.current_frame = (v.current_frame + 1) % total_frames;
+                        if let Some(frame) = v.anim_data.as_ref().and_then(|a| a.anim_frames.get(v.current_frame)) {
+                            v.original_image = Some(frame.clone());
+                            v.review(true, false);
+                        }
+                });
             }
         }
     }

@@ -260,7 +260,7 @@ impl Lut4ColorSettings {
     }
     
     pub fn default() -> Lut4ColorSettings {
-        let mut s = Lut4ColorSettings::new();
+        let s = Lut4ColorSettings::new();
         //s.update_lut(&ColorSettings::default());
         s
     }

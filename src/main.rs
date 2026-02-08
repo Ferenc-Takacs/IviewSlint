@@ -22,7 +22,7 @@ use std::env;
 fn main() -> Result<(), slint::PlatformError> {
 	unsafe {
 		//std::env::set_var("SLINT_BACKEND", "winit");
-		std::env::set_var("SLINT_DEBUG_PERFORMANCE", "console,refresh_lazy");
+		//std::env::set_var("SLINT_DEBUG_PERFORMANCE", "console,refresh_lazy");
 	}
     //let icon = load_icon();
     let ui = MainWindow::new()?;
@@ -39,6 +39,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let save_window_ui = SaveWindow::new()?;
     let state = Rc::new(RefCell::new(ImageViewer::default()));
     state.borrow_mut().ui_handle = Some(ui.as_weak());
+    state.borrow_mut().self_weak = Some(state.clone());
     
     file_callbacks::file_callbacks(ui.as_weak(), settings_ui, about_ui, info_ui, save_window_ui, state.clone());
     
@@ -50,6 +51,7 @@ fn main() -> Result<(), slint::PlatformError> {
 }
 
 pub struct ImageViewer {
+    pub self_weak: Option<Rc<RefCell<ImageViewer>>>,
     pub ui_handle: Option<slint::Weak<MainWindow>>,
     pub settings_window: Option<ColorCorrectionWindow>,
     pub about_window: Option<AboutWindow>,
@@ -106,6 +108,7 @@ pub struct ImageViewer {
     pub is_animated: bool,
     pub anim_playing: bool,
     pub anim_loop: bool,
+    pub anim_timer: slint::Timer,
     pub current_frame: usize,
     pub last_frame_time: std::time::Instant,
     pub anim_data: Option<AnimatedImage>,
@@ -117,6 +120,7 @@ pub struct ImageViewer {
 impl Default for ImageViewer {
     fn default() -> Self {
         Self {
+            self_weak: None,
             ui_handle : None,
             settings_window: None,
             about_window: None,
@@ -169,6 +173,7 @@ impl Default for ImageViewer {
             is_animated: false,
             anim_playing: false,
             anim_loop: true,
+            anim_timer: slint::Timer::default(),
             current_frame: 0,
             last_frame_time: std::time::Instant::now(),
             anim_data: None,

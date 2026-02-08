@@ -8,6 +8,7 @@ use slint::{Color, Image, SharedPixelBuffer, Rgba8Pixel, ComponentHandle};
 use crate::Pf32;
 //use image::math::Rect;
 use crate::ImageState;
+use crate::file_callbacks::set_animation;
 
 // Segédfüggvény a vágólapon lévő kép kimentéséhez egy ideiglenes fájlba
 pub fn save_clipboard_image() -> Option<PathBuf> {
@@ -84,6 +85,7 @@ pub struct Resolution {
     pub dpi: bool,
 }
 
+#[derive(Clone)]
 pub struct AnimatedImage {
     //pub anim_frames: Vec<egui::TextureHandle>, // GPU textúrák // old
     pub anim_frames: Vec<image::DynamicImage>,
@@ -171,11 +173,14 @@ impl ImageViewer {
             height
         );
         let slint_img = Image::from_rgba8(slint_pixel_buffer);
-        self.sizing_window(slint_img);
+        
+        self.sizing_and_show_window(slint_img);
+        
+        set_animation(self);
     }
 
 
-    fn sizing_window(&mut self, slint_img: slint::Image){
+    fn sizing_and_show_window(&mut self, slint_img: slint::Image){
 
         let old_magnify = self.magnify;
         let old_size = self.image_size * old_magnify;
@@ -245,8 +250,11 @@ impl ImageViewer {
             if let Some(handle) = &self.ui_handle {
                 if let Some(ui) = handle.upgrade() {
                     //println!("{:?} {:?} {:?} {:?} {:?} ", inner_size, pos, off, self.magnify, self.center);
-                    let title: slint::SharedString = format!("iViewer - {}. {}{}   {}",
+                    let mut title: slint::SharedString = format!("iViewer - {}. {}{}   {}",
                         self.actual_index, self.image_name, if self.modified {'*'} else {' '},  self.magnify).into();
+                    if let Some(anim) = &self.anim_data {
+                        title = format!("{} Frame: {} / {}",title, self.current_frame + 1, anim.total_frames).into();
+                    }
                     if bigger != 1.0 || self.want_magnify == -1.0 {
                         ui.window().set_position(slint::PhysicalPosition::new(pos.x as i32, pos.y as i32));
                     }

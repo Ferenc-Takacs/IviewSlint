@@ -645,7 +645,7 @@ export component MainWindow inherits Window {
         Menu {
             title: @tr("Animation");
             MenuItem {
-                title: @tr("▶ Play/⏸ Stop");
+                title: @tr("▶ Play/⏸ Stop (Space)");
                 activated => { play_animation(); }
             }
             MenuItem {
@@ -653,11 +653,11 @@ export component MainWindow inherits Window {
                 activated => { begin_animation(); }
             }
             MenuItem {
-                title: @tr("◀ Back");
+                title: @tr("◀ Back (←)");
                 activated => { back_animation(); }
             }
             MenuItem {
-                title: @tr("▶ Forward");
+                title: @tr("▶ Forward (→)");
                 activated => { forward_animation(); }
             }
             MenuItem {

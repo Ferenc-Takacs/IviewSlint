@@ -97,8 +97,8 @@ fn cbrt(x: f32) -> f32 { // third (cube) root
 }
 
 fn r( th: f32) -> f32 { // ellipse ratio
-	return 2.4285922050 * 0.808675766 /
-		length(vec2<f32>( 0.808675766 * cos(th), 2.4285922050 * sin(th) ));
+	return 2.4285922050 * 0.8086757660 /
+		length(vec2<f32>( 0.8086757660 * cos(th), 2.4285922050 * sin(th) ));
 }
 
 fn rgb_to_oklab(rgb: vec3<f32>) -> vec3<f32> {
